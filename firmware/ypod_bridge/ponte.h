@@ -193,9 +193,10 @@ const long YPOD_BAUD   = 9600;
 // --------------------------------------------------------------------------
 // 3b. Compactacao do buffer
 // --------------------------------------------------------------------------
-// O pod manda ~27 linhas por minuto. O PC, ao receber, junta tudo do minuto,
+// O pod manda 20 a 30 linhas por minuto (medido; uma a cada 2 ou 3 s). O PC,
+// ao receber, junta tudo do minuto,
 // tira a media e grava SO a media -- as outras 26 sao descartadas. Guardar as
-// 27 no buffer e, portanto, proteger com todo cuidado um detalhe que sera
+// todas no buffer e, portanto, proteger com todo cuidado um detalhe que sera
 // jogado fora na chegada.
 //
 // Com a compactacao, o buffer passa a guardar:

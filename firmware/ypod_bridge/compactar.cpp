@@ -1,7 +1,8 @@
 /*
- * Compactacao do buffer: 27 linhas por minuto viram uma media
+ * Compactacao do buffer: as linhas de um minuto viram uma media
  * ------------------------------------------------------------
- * O pod manda ~27 linhas por minuto. O PC, ao receber, junta o minuto inteiro,
+ * O pod manda 20 a 30 linhas por minuto (medido; uma a cada 2 ou 3 s). O PC,
+ * ao receber, junta o minuto inteiro,
  * tira a media e grava so ela -- as outras 26 sao descartadas. Guardar as 27 no
  * buffer e proteger com zelo um detalhe que sera jogado fora na chegada.
  *

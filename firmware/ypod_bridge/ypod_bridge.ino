@@ -575,13 +575,13 @@ void setup() {
   }
 #if COMPACTAR_BUFFER
   if (anelMin.cap) {
-    // ~27 linhas por minuto: o detalhe cobre pouco mais de uma hora e os
-    // minutos cobrem quase duas semanas. Em MINUTOS, nao em horas: 1600 linhas
-    // dao 59 minutos, e a divisao inteira por 60 imprimiria "~0 h".
+    // A 20-30 linhas por minuto (medido), o detalhe cobre entre 50 e 80
+    // minutos. Uso 25 como meio da faixa, e imprimo em MINUTOS: a divisao
+    // inteira por 60 daria "~0 h" e pareceria defeito.
     Serial.printf("[buf] %u linhas cruas + %u medias de minuto (~%u min de"
                   " detalhe, ~%u dias no total)\n",
                   (unsigned)ring.cap, (unsigned)anelMin.cap,
-                  (unsigned)(ring.cap / 27), (unsigned)(anelMin.cap / 60 / 24));
+                  (unsigned)(ring.cap / 25), (unsigned)(anelMin.cap / 60 / 24));
   } else {
     Serial.printf("[buf] %u linhas, sem compactacao (sem PSRAM)\n", (unsigned)ring.cap);
   }
