@@ -40,6 +40,7 @@ USBHostSerialClass USBHostSerial;
 static MontadorDeLinha s_montador;
 static bool     s_montado = false;
 static uint32_t s_bytes = 0;
+static uint32_t s_remontagens = 0;
 static char     s_estado[72] = "iniciando";
 
 void fonte_setup() {
@@ -98,6 +99,47 @@ void fonte_loop() {
     }
   }
 
+  // ------------------------------------------------------------------------
+  // Montado e mudo por muito tempo: refaz o aperto de mao do CDC.
+  // ------------------------------------------------------------------------
+  // CUIDADO COM O QUE ISTO RESOLVE. Sao dois problemas diferentes:
+  //
+  //   (a) o pod montou mas nao fala  -> isto aqui pode destravar, porque num
+  //       CDC os dados so fluem depois do DTR, e ja vimos a porta montar muda.
+  //
+  //   (b) o pod nao monta depois que a ponte reinicia  -> isto NAO resolve, e
+  //       e o caso que mais acontece. O pod e autoalimentado: ele so levanta o
+  //       pull-up de D+ quando detecta VBUS. Reiniciando a ponte, o VBUS nunca
+  //       cai (vem do conector COM pelo jumper), entao o pod nao percebe host
+  //       novo e fica como estava. Por isso replugar o cabo resolve: corta o
+  //       VBUS. Nenhum comando de software no ESP faz esse VBUS cair --
+  //       exigiria uma chave eletronica na linha de 5 V do conector USB.
+  //
+  // A biblioteca tambem nao oferece caminho para o caso (b): USBHostClass tem
+  // begin(), task() e started(), mas nao tem end(). Nao da para derrubar e
+  // subir a pilha de host; so a camada CDC.
+#if USB_REMONTAR_S > 0
+  static uint32_t t_ultimo_byte = 0;
+  static uint32_t t_tentativa = 0;
+  if (!t_ultimo_byte) t_ultimo_byte = millis();
+  uint32_t quieto = millis() - t_ultimo_byte;
+  if (quieto > (uint32_t)USB_REMONTAR_S * 1000 &&
+      millis() - t_tentativa > (uint32_t)USB_REMONTAR_S * 1000) {
+    t_tentativa = millis();
+    s_remontagens++;
+    Serial.printf("[usb] %lus sem byte nenhum - refazendo o aperto de mao "
+                  "(tentativa %lu)\n",
+                  (unsigned long)(quieto / 1000), (unsigned long)s_remontagens);
+    USBHostSerial.setControlLineState(0x0000);     // derruba DTR/RTS
+    delay(50);
+    USBHostSerial.setLineCoding(YPOD_BAUD, 0, 0, 8);
+    delay(20);
+    USBHostSerial.setControlLineState(0x0003);     // levanta de novo
+    USBHostSerial.readClear();
+  }
+  if (USBHostSerial.available() > 0) t_ultimo_byte = millis();
+#endif
+
   uint8_t buf[64];
   size_t n = USBHostSerial.read(buf, sizeof(buf));
   if (n > 0) {
@@ -107,7 +149,12 @@ void fonte_loop() {
 }
 
 void fonte_status(char *out, size_t n) {
-  snprintf(out, n, "USB host - %s (%lu bytes)", s_estado, (unsigned long)s_bytes);
+  if (s_remontagens) {
+    snprintf(out, n, "USB host - %s (%lu bytes, %lu tentativas de remontar)",
+             s_estado, (unsigned long)s_bytes, (unsigned long)s_remontagens);
+  } else {
+    snprintf(out, n, "USB host - %s (%lu bytes)", s_estado, (unsigned long)s_bytes);
+  }
 }
 
 #endif  // FONTE_DO_POD == FONTE_USB_HOST

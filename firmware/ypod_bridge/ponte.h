@@ -178,6 +178,19 @@ const int  YPOD_TX_PIN = 17;         // nao usado; a UART so pede um pino
 const long YPOD_BAUD   = 9600;
 
 // --------------------------------------------------------------------------
+// 3a. Pod montado e mudo
+// --------------------------------------------------------------------------
+// Passado este tempo sem receber byte nenhum, a ponte refaz o aperto de mao do
+// CDC (derruba e levanta o DTR). Resolve o caso de o pod montar e nao falar.
+//
+// NAO resolve o caso de o pod nao montar depois que a ponte reinicia -- esse e
+// de VBUS, nao de software: o pod e autoalimentado e so se apresenta quando ve
+// o VBUS subir, e reiniciar a ponte nao derruba o VBUS. Ver fonte_usb.cpp.
+//
+// Zero desliga.
+#define USB_REMONTAR_S    180
+
+// --------------------------------------------------------------------------
 // 3b. Compactacao do buffer
 // --------------------------------------------------------------------------
 // O pod manda ~27 linhas por minuto. O PC, ao receber, junta tudo do minuto,

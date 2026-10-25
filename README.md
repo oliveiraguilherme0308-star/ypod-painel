@@ -467,6 +467,24 @@ atrasado (manda `2026-07-30`). As duas ficam gravadas. Nas linhas que chegam
 atrasadas pelo buffer da ponte, o horário é reconstruído a partir do relógio
 interno dela, não da hora em que o PC recebeu.
 
+### Backup
+
+O histórico completo mora num arquivo só. O D1 na nuvem é cópia, mas fica numa
+conta grátis com teto de 5 GB. Um HD falhando leva o projeto inteiro.
+
+```
+powershell -ExecutionPolicy Bypass -File tools\backup_banco.ps1 -Destino D:\backup-ypod -Verificar
+```
+
+Guarda as 8 cópias mais recentes (`-Manter N` muda). Para rodar sozinho,
+agende no Agendador de Tarefas do Windows.
+
+**Não use `copy ypod.db`.** O banco usa WAL: com o servidor rodando, parte das
+escritas está no arquivo `-wal` e ainda não foi para o `.db`. Uma cópia simples
+pega um banco sem elas — ou pior, pega o `.db` no meio de uma gravação. O
+script usa `VACUUM INTO`, que é a forma do próprio SQLite de copiar um banco em
+uso, e de quebra já sai compactado.
+
 ### O que o servidor descarta, e por quê
 
 O parser lê os campos **por posição**, então linha fora do formato não é lida

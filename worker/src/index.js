@@ -36,6 +36,18 @@ const STALE_S = 60;               // leitura mais velha que isso = "sem dados"
 const PC_OFFLINE_S = 120;         // PC sem mandar nada ha isso = offline
 const LOTE_MAX = 1000;            // linhas por POST
 const EXPORT_MAX = 200000;        // linhas no CSV (~4,5 meses por minuto)
+
+// Acima desta janela, o /api/export pede o token de escrita.
+//
+// Nao e para impedir o uso legitimo: baixar um ano inteiro algumas vezes cabe
+// folgado na cota (1 ano por minuto = 525 mil linhas; o plano gratis le 5
+// milhoes por dia). O que derruba e repeticao automatica -- e desde 01/09/2026
+// a Cloudflare corta de verdade: passou da cota, as consultas falham ate a
+// meia-noite UTC, e o site inteiro para junto.
+//
+// Trinta dias cobre o uso casual do painel publico. Acima disso e analise, e
+// quem faz analise tem o token.
+const EXPORT_LIVRE_S = 30 * 86400;
 const FONTE = "online · médias por minuto";
 
 const CORS = {
@@ -60,7 +72,7 @@ export default {
         case "/api/window": return json(await janela(env, q));
         case "/api/range":  return json(faixa(await estado(env)));
         case "/api/table":  return json(await tabela(env, q));
-        case "/api/export": return await exportar(env, q);
+        case "/api/export": return await exportar(env, q, req);
         case "/":           return texto("YPOD API no ar. O painel fica em https://ypod.ypod-sm.workers.dev");
       }
       return texto("not found", 404);
@@ -90,9 +102,13 @@ function texto(s, status = 200) {
 // ---------------------------------------------------------------------------
 // escrita: o PC empurra as medias pendentes + o retrato "ao vivo"
 // ---------------------------------------------------------------------------
-async function push(req, env) {
+function temToken(req, env) {
   const auth = req.headers.get("Authorization") || "";
-  if (!env.INGEST_TOKEN || !iguais(auth, "Bearer " + env.INGEST_TOKEN)) {
+  return !!env.INGEST_TOKEN && iguais(auth, "Bearer " + env.INGEST_TOKEN);
+}
+
+async function push(req, env) {
+  if (!temToken(req, env)) {
     return texto("token invalido", 401);
   }
   let body;
@@ -359,9 +375,22 @@ const FMT = new Intl.DateTimeFormat("sv-SE", {
 });
 const quando = (s) => FMT.format(new Date(s * 1000));
 
-async function exportar(env, q) {
+async function exportar(env, q, req) {
   const [t0, t1fim] = lerJanela(q);
   const t1 = Math.min(t1fim, Date.now() / 1000 + 1);
+
+  if (t1 - t0 > EXPORT_LIVRE_S && !temToken(req, env)) {
+    const dias = Math.round((t1 - t0) / 86400);
+    return texto(
+      "Janela de " + dias + " dias. A exportacao aberta vai ate 30 dias.\n\n" +
+      "Acima disso e preciso o token de escrita, no cabecalho\n" +
+      "Authorization: Bearer <token>.\n\n" +
+      "Nao e segredo dos dados -- eles estao todos no painel. E cota: ler o\n" +
+      "arquivo inteiro em laco esgota o limite diario do banco e derruba o\n" +
+      "site para todo mundo ate a meia-noite UTC.\n\n" +
+      "Para o historico completo, peca a quem mantem o projeto.\n", 401);
+  }
+
   const linhas = ["horario_brasilia,pod_id,firmware," + KEYS.join(",")];
   // em paginas, pelo indice de ts, para nao montar um resultado gigante de uma vez
   let desde = t0, total = 0;
