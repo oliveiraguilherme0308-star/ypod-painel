@@ -74,6 +74,14 @@ site/
 ATUALIZACAO-24-10.md
 
 # ---------------------------------------------------------------------------
+# Resumo operacional para assistentes de codigo. O conteudo que importa para
+# quem constroi o sistema foi para o README.md; este arquivo e conveniencia de
+# ferramenta, nao parte do projeto. Fica no disco: e ele que o Claude carrega
+# sozinho no inicio da sessao.
+# ---------------------------------------------------------------------------
+CLAUDE.md
+
+# ---------------------------------------------------------------------------
 # Historico do projeto: decisoes e o porque delas. Util para quem trabalha
 # nisto, mas nao e preciso para construir nem rodar o sistema -- e o criterio
 # do repositorio e esse. As armadilhas que importam foram para o CLAUDE.md.

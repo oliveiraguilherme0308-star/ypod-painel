@@ -22,7 +22,7 @@ D0/D1, então com `Serial.print()` o pino fica mudo.)
 > no `.gitignore` e não vem no repositório; sem ele a compilação para com uma
 > mensagem dizendo isso.
 
-## 1. Rodar o servidor
+## Rodar o servidor
 
 ```
 pip install pyserial
@@ -50,11 +50,54 @@ abrem em `http://<ip-do-seu-pc>:8000`.
 **No modo USB, feche o Serial Monitor do VSCode** — no Windows só um programa por
 vez abre a COM.
 
-## 2. Montar a ponte ESP32
+## Montar a ponte ESP32
 
-Firmware em [firmware/ypod_bridge/ypod_bridge.ino](firmware/ypod_bridge/ypod_bridge.ino).
-Abra na Arduino IDE (placa *ESP32S3 Dev Module*), preencha `WIFI_SSID` /
-`WIFI_PASS` e grave.
+Firmware em [firmware/ypod_bridge/](firmware/ypod_bridge/). Toda a configuração
+fica em `ponte.h`; os outros arquivos você só mexe para mudar comportamento.
+
+**Não preencha `WIFI_SSID`/`WIFI_PASS`** — eles são padrão de fábrica e o certo
+é deixar vazios. A rede que vale é escolhida num portal e gravada na placa.
+
+### Configuração da IDE (ou do FQBN)
+
+Compila igual com a configuração errada e só quebra depois, no hardware:
+
+```
+Placa .............. ESP32S3 Dev Module
+Flash Size ......... 16MB (128Mb)
+PSRAM .............. OPI PSRAM       ← sem isto, buffer de 400 linhas, não 20.000
+Partition Scheme ... 16M Flash (3MB APP/9.9MB FATFS)
+USB Mode ........... Hardware CDC and JTAG
+USB CDC On Boot .... Disabled
+```
+
+O core precisa ser **esp32 3.3.0 ou mais novo**: é de onde vem a biblioteca de
+USB host. Em versão anterior o projeto nem compila.
+
+### Nunca
+
+- **Não alimente pelas duas USB ao mesmo tempo.** Com o jumper `USB-OTG`
+  fechado, `COM` e `USB` se realimentam. Já quebrou a transferência de dados
+  com a enumeração parecendo normal — sintoma confuso, causa boba.
+- **Não resete a placa por DTR/RTS via pyserial.** Trava esta placa. Use
+  `esptool --after hard_reset` ou o próprio upload.
+- **Não ponha sinal de 5 V num GPIO.** O ESP32-S3 aceita 3,6 V no máximo, e o
+  pod é 5 V.
+- **Não mexa em `CPU_MHZ` nem em `WIFI_ECONOMIA`.** 160 MHz ou economia de
+  rádio **quebram a enumeração USB**: compila, conecta no Wi-Fi, e o pod nunca
+  monta. Economiza 0,3 W e custa a leitura do pod.
+
+### Os sensores de vento
+
+São da ponte, não do pod, e entram no fim da mesma linha:
+
+| | |
+|---|---|
+| Direção | **AS5600**, I²C 0x36, SDA `GPIO8`, SCL `GPIO9`, **3,3 V** |
+| Velocidade | tacômetro óptico, D0 em `GPIO5`, contado por hardware (PCNT) |
+
+Contado por PCNT e não por interrupção de software porque o periférico não
+perde pulso quando a CPU está ocupada com USB host e Wi-Fi ao mesmo tempo.
 
 ### O pod entra pela USB do ESP32
 
@@ -168,12 +211,68 @@ do OTA sai do `segredos.h`, então não se digita nada. Outras formas:
 ... -SoCompilar            só confere que compila
 ```
 
+O script é PowerShell. Fora do Windows, ou para entender o que ele faz, são
+dois comandos:
+
+```
+arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi,CDCOnBoot=default,USBMode=hwcdc --build-path BUILD firmware/ypod_bridge
+
+python <core>/tools/espota.py -i ypod-bridge.local -p 3232 -a <senha> -f BUILD/ypod_bridge.ino.bin
+```
+
+O `espota.py` vem junto com o core do ESP32 (em `~/.arduino15/packages/esp32/`
+no Linux, `%LOCALAPPDATA%\Arduino15\packages\esp32\` no Windows). Para gravar
+por cabo, troque o segundo comando por `arduino-cli upload --fqbn <o mesmo>
+--port COM5 --input-dir BUILD firmware/ypod_bridge`.
+
 **A primeira gravação de uma placa nova é sempre por cabo** — o OTA só existe
 porque já há um firmware rodando que sabe receber. E o cabo vai no conector
 `COM`, não no `USB`: o `USB` é a porta OTG, por onde entra o pod.
 
 Quem autentica o OTA é o firmware **que já está na placa**. Trocar a senha no
 `segredos.h` só passa a valer depois da gravação seguinte.
+
+### Escolher a rede, sem cabo
+
+A ponte não tem credenciais fixas. Se não entrar em nenhuma rede em 30 s — ou
+se ficar 5 minutos caída depois de já estar no ar — ela levanta um ponto de
+acesso:
+
+```
+rede: ypod-setup    senha: ypod1234    →    http://192.168.4.1
+```
+
+Escolha a rede, digite a senha, e ela reinicia já conectada. O portal fecha
+sozinho em 5 min e tenta a rede salva de novo, para uma queda curta não deixar
+a ponte presa nele. **A coleta do pod continua rodando em todos esses estados.**
+Para esquecer a rede salva, segure `BOOT` nos 3 primeiros segundos ao ligar.
+
+No Android, o celular às vezes volta para os dados móveis ao ver que a rede não
+tem internet, e aí o navegador não acha o `192.168.4.1`. Desligar os dados
+móveis por um minuto resolve.
+
+**Duas coisas no portal parecem melhoráveis e não são:** o AP sobe em modo AP
+puro, não `AP_STA` (senão a parte cliente troca de canal tentando reconectar e
+derruba o celular), e a varredura de redes acontece uma vez antes de o AP
+subir, nunca dentro da página. No `loop()`, ler o pod vem antes de qualquer
+coisa de rede — a primeira versão retornava cedo durante o portal e desligava a
+coleta justo quando o buffer mais importa.
+
+### Ajustar a ponte depois de instalada
+
+`http://ypod-bridge.local/config`, protegida pela senha do portal (usuário
+`ypod`). O que se ajusta ali fica na **NVS** e sobrevive a reinício e a nova
+gravação de firmware — os `#define` de `ponte.h` são só o padrão de fábrica:
+
+| ajuste | para quê |
+|---|---|
+| norte da biruta | aponte ao norte e clique; o ângulo atual vira o zero |
+| furos do disco | tem que bater com o disco de verdade |
+| fator `k` | converte rpm em m/s; `0` publica rpm cru |
+| senha do portal | a de fábrica está publicada aqui, então troque |
+
+A página de status (`/`) continua aberta e **só de leitura**: é ela que responde
+"o problema é a rede ou é o pod?", e pôr senha ali atrapalharia o diagnóstico.
 
 ### Testar sem o hardware pronto
 
@@ -281,7 +380,7 @@ o Telegraf consumindo o MQTT: nos dois casos o buffer é pequeno e volátil.
 Sensor sem leitura (o `65535` de desconectado) não vira campo — fica buraco no
 gráfico, que é o correto, em vez de um pico de 65 mil.
 
-## 3. O painel
+## O painel
 
 - **Cards** — valor mais recente de cada sensor, variação nos últimos 5 min,
   sparkline e o mín/máx **do intervalo que estiver na tela**. Sensor que reporta
@@ -299,7 +398,44 @@ passo). A tabela e o CSV são leitura a leitura, sem média.
 Um gráfico por unidade, nunca dois eixos y no mesmo gráfico. Clique na legenda
 para esconder uma série.
 
-## 4. Os dados
+## O painel público (Cloudflare)
+
+O painel local serve quem está na mesma rede. Para ele ficar acessível de
+qualquer lugar, o PC **empurra** os dados para uma API na Cloudflare — a nuvem
+nunca lê o PC, que está atrás do roteador.
+
+```
+ypod_monitor.py --POST /api/push a cada 15 s--> Worker ypod-api --> banco D1
+site https://ypod.ypod-sm.workers.dev ----GET /api/*----------------^
+```
+
+A API responde **no mesmo formato** do servidor local — por isso o site usa o
+mesmo [static/dashboard.html](static/dashboard.html), mudando só a meta tag
+`ypod-api`. Mexeu num, mexa no outro; o `contrato_test.py` não cobre essa parte.
+
+- **Fila:** o banco local. O ponteiro `nuvem_id` na tabela `state` marca até
+  onde já subiu, e só avança depois do `200`. Internet fora por dias não perde
+  nada: quando volta, sobe o atraso em lotes de mil.
+- **Escrita** exige o secret `INGEST_TOKEN`; a leitura é pública.
+- **Publicar a API:** `wrangler deploy` dentro de `worker/`.
+- **Publicar o site:** `python tools/gerar_site.py <url-da-api>` e depois
+  `wrangler deploy -c wrangler.site.jsonc`. Só a pasta `site/` sobe, e ela é
+  gerada — não edite nada lá dentro.
+- **Cota grátis do D1:** 100 mil linhas escritas por dia. Por isso só sobem
+  médias de minuto (`--gravacao 0` estoura) e janelas acima de 2 dias leem a
+  tabela `hora`, que resume por hora.
+
+> **Só um PC alimenta o site.** Dois enviando fazem os valores "ao vivo"
+> alternarem entre eles, e com a ponte falsa isso publica dado inventado.
+
+Armadilhas que já custaram tempo aqui: `wrangler dev` falha com
+`SQLITE_CANTOPEN` em caminho longo (acima de 260 caracteres — teste numa pasta
+curta); `wrangler secret put` lendo de pipe do PowerShell grava o `\r\n` junto
+e devolve 401 depois (use `wrangler secret bulk arquivo.json`); e o subdomínio
+`workers.dev` só se troca pelo painel, nunca pela API — trocar quebra todas as
+URLs publicadas.
+
+## Os dados
 
 Tudo em `data/ypod.db` (SQLite). Uma tabela com as leituras cruas e um resumo por
 minuto que é o que faz consultar meses ser instantâneo — com 6 meses gravados
@@ -312,7 +448,7 @@ baixar o pedaço que interessa em CSV pelo painel.
 Os CSVs da versão anterior (`data/ypod_AAAA-MM-DD.csv`) são importados sozinhos
 na primeira execução e não são reimportados depois.
 
-## 5. Ajustar os sensores
+## Ajustar os sensores
 
 Os rótulos saem do mapa `FIELDS`, no topo de [ypod_monitor.py](ypod_monitor.py):
 
@@ -330,3 +466,65 @@ A hora usada é a **do PC**, não a do pod: o RTC do seu pod está uns 2 meses
 atrasado (manda `2026-07-30`). As duas ficam gravadas. Nas linhas que chegam
 atrasadas pelo buffer da ponte, o horário é reconstruído a partir do relógio
 interno dela, não da hora em que o PC recebeu.
+
+### O que o servidor descarta, e por quê
+
+O parser lê os campos **por posição**, então linha fora do formato não é lida
+"com um campo errado" — ela é lida **toda errada**. Três camadas de defesa, e
+nenhuma delas é paranoia: as quatro situações abaixo aconteceram de verdade.
+
+1. **Contagem de campos.** A linha do pod tem 21 campos exatos (22 com o vento
+   que a ponte acrescenta). Menos que isso, descarta a linha inteira. Já chegou
+   linha truncada, e o `4665` que é o ADC do sensor de CO virou 4665 °C no
+   banco; e já chegou linha com a vírgula entre `pod_id` e firmware corrompida
+   num `Y`, o que fundiu dois campos e gravou a umidade como temperatura.
+2. **Primeiro campo.** Tem que ser data ISO ou vazio. Se vier número ali, a
+   linha está deslocada e não dá para adivinhar de quanto.
+3. **Faixa física por sensor.** Temperatura fora de −40 a 85 °C, umidade fora
+   de 0 a 100% — descarta **o valor**, não a linha: os outros sensores da mesma
+   linha podem estar bons.
+
+Além disso: `-999` e `9999` são sentinelas de inválido, e `>= 60000` é canal
+saturado ou sensor desconectado. O pod manda **65535, 65534 e 64537**
+alternando (este último nos primeiros minutos depois de energizar, com os MOx
+ainda aquecendo) — filtrar só o 65535 deixa passar picos de 65 mil que achatam
+a escala de todos os gráficos de gás.
+
+Data impossível (`2000-84-90T00:03:00`) derruba a linha inteira: não é relógio
+desacertado, é sinal de que o pod estava em mau estado quando montou a linha.
+
+### Direção do vento não é média aritmética
+
+Direção é grandeza **circular**: a média entre 350° e 10° é 0°, não 180°. E o
+erro não seria aleatório — ele aparece exatamente quando o vento vem do norte,
+que é onde a escala dá a volta. O servidor soma os vetores unitários e tira
+`atan2(soma dos senos, soma dos cossenos)`, e mínimo e máximo de direção vêm
+vazios porque não significam nada num círculo.
+
+A mesma conta está na ponte (`compactar.cpp`) e no Worker. Se corrigir num
+lugar só, os dados ficam certos com o PC ligado e errados depois de uma queda.
+
+## Se a coleta parar
+
+Nesta ordem — cada passo só faz sentido se o anterior foi descartado:
+
+1. **O site diz "PC da escola offline"** → abra `data/servidor.log` naquele PC.
+2. **O log diz "procurando a ponte"** → abra <http://ypod-bridge.local> e olhe
+   o LED da ponte.
+3. **A ponte responde mas diz `esperando o pod (0 bytes)`** → desconecte e
+   reconecte a USB do pod. Ele não re-enumera sozinho depois que a ponte
+   reinicia; é a pendência mais chata que resta.
+4. **O servidor travou** → Gerenciador de Tarefas, finalize o `python.exe`. O
+   `iniciar_ypod.ps1` religa em 15 s. Se o próprio script parou, dois cliques
+   no atalho "YPOD servidor" (`Win+R` → `shell:startup`).
+
+O LED responde duas perguntas independentes sem misturar. A **cor de fundo** é
+sobre o pod: verde pulsando a cada leitura, amarelo quando ele sumiu. A
+**piscada rápida por cima** é sobre a rede: azul procurando, roxo no portal,
+nenhuma quando está tudo certo. Verde pulsando com piscada roxa quer dizer
+"coletando normalmente, esperando você configurar a rede".
+
+**Antes de teorizar, abra a página de status.** Ela diz em uma linha se o
+problema é rede ou é o pod. Três vezes neste projeto a causa foi o pod plugado
+no PC em vez da ponte, e em todas se perdeu tempo inventando teoria sobre cabo,
+contato e laço de terra antes de olhar.
