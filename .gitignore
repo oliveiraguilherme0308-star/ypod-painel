@@ -27,6 +27,12 @@ testes/contrato/
 testes/_grav/
 
 # ---------------------------------------------------------------------------
+# Binarios de ferramenta (arduino-cli e afins): 50+ MB cada, especificos de
+# sistema operacional, e baixados de novo em um comando.
+# ---------------------------------------------------------------------------
+ferramentas/
+
+# ---------------------------------------------------------------------------
 # Compilado e cache
 # ---------------------------------------------------------------------------
 firmware/*/build/
@@ -68,6 +74,12 @@ site/
 ATUALIZACAO-24-10.md
 
 # ---------------------------------------------------------------------------
+# Notas locais: o que e desta maquina ou desta pessoa, e nao de quem clona.
+# O Claude le o CLAUDE.local.md junto com o CLAUDE.md.
+# ---------------------------------------------------------------------------
+CLAUDE.local.md
+
+# ---------------------------------------------------------------------------
 # Fora do repositorio, preservados no disco
 # ---------------------------------------------------------------------------
 # A primeira versao do projeto, substituida. Carrega copias byte a byte
@@ -75,8 +87,16 @@ ATUALIZACAO-24-10.md
 # o repositorio encontrar dois ypod_monitor.py sem saber qual vale.
 ypod monitor/
 
-# Identico a firmware/YPOD_USB_Leitor/YPOD_USB_Leitor.ino.
-/YPOD_USB_Leitor.ino
+# Sketch de TESTE de USB host, de outra sessao. Nao faz parte do sistema: nunca
+# roda na ponte, nao e compilado por nada, nao e referenciado por nenhum
+# arquivo. Repositorio leva o que e preciso para construir o sistema.
+YPOD_USB_Leitor.ino
+firmware/YPOD_USB_Leitor/
+
+# Dados de medicao, nao codigo. O servidor importa sozinho qualquer CSV que
+# encontrar em data/ -- entao commitar um e fazer todo clone nascer com medicao
+# de setembro dentro do banco. Os dados vivem no SQLite e no D1.
+data/
 
 # O diagrama esta DESATUALIZADO: diz DevKitC-1 (e uma YD-ESP32-S3), descreve a
 # alimentacao errada e nao tem os sensores de vento. Diagrama errado e pior que

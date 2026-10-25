@@ -1,7 +1,7 @@
 # YPOD — monitoramento de qualidade do ar (Grupo 5, Internet Industrial das Coisas, PUCPR)
 
-Este arquivo é lido automaticamente no início de cada sessão. É o contexto mínimo
-para continuar o projeto sem recomeçar. O histórico longo está no
+Resumo operacional do projeto: o mínimo para continuar sem recomeçar.
+(Assistentes de código leem este arquivo sozinhos no início da sessão.) O histórico longo está no
 [ESTADO.md](ESTADO.md); como rodar cada parte, no [README.md](README.md).
 
 ## O que o sistema é
@@ -276,24 +276,5 @@ Em aberto:
 5. **Broker e InfluxDB da escola ainda não definidos.** Perguntar a política de
    retenção do bucket: se for curta, o histórico longo só existe no SQLite local.
    (A rede da escola **não** isola clientes: TCP PC↔ponte funciona.)
-7. **Banco SQLite dentro do OneDrive.** Sincronizar um SQLite aberto pode
+6. **Banco SQLite dentro do OneDrive.** Sincronizar um SQLite aberto pode
    travar o arquivo; para uso continuo, mover o projeto para fora (ex. `C:\YPOD`).
-
-## Como trabalhar com o Guilherme
-
-- Português, direto. Ele entende hardware e contesta quando algo não fecha —
-  quando contesta, **costuma estar certo**: já pegou um "é alimentação dupla" que
-  não explicava o caso anterior.
-- **Verifique antes de teorizar.** O erro mais caro desta sessão foi inventar
-  teorias (cabo, contato, laço de terra) três vezes seguidas, quando a causa era
-  o pod estar plugado no PC em vez do ESP. Uma consulta à página de status
-  resolveria em 5 segundos. Teoria sem medição irrita e perde tempo.
-- **Mude uma variável por vez.** Mudar PSRAM e Partition Scheme juntos levou a
-  uma conclusão errada sobre a PSRAM estar quebrada.
-- "Compila e conecta no Wi-Fi" **não** é validação. O que quebrou o USB host
-  passou nesses dois.
-- Ele não vê a saída de um comando enquanto ele roda, só no fim. Peça a ação
-  física (plugar, religar) **antes** de disparar o comando, nunca durante.
-- Hotspot de celular costuma isolar os clientes: mDNS funciona (multicast) e TCP
-  não (unicast). Rede de escola pode fazer o mesmo — se der, o caminho é MQTT com
-  broker, ou o plano B do cabo direto.

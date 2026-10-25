@@ -1,7 +1,7 @@
 # Estado do projeto YPOD — 24 de outubro de 2026
 
-Documento de continuidade. O contexto mínimo está no [CLAUDE.md](CLAUDE.md), que
-é lido automaticamente; este arquivo é o histórico com as decisões e o porquê
+Documento de continuidade. O resumo operacional está no [CLAUDE.md](CLAUDE.md);
+este arquivo é o histórico com as decisões e o porquê
 delas. Como rodar cada parte: [README.md](README.md).
 
 > **A camada de nuvem foi construída no PC da escola na tarde de 24/10.** Painel
