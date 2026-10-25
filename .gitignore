@@ -74,6 +74,13 @@ site/
 ATUALIZACAO-24-10.md
 
 # ---------------------------------------------------------------------------
+# Historico do projeto: decisoes e o porque delas. Util para quem trabalha
+# nisto, mas nao e preciso para construir nem rodar o sistema -- e o criterio
+# do repositorio e esse. As armadilhas que importam foram para o CLAUDE.md.
+# ---------------------------------------------------------------------------
+ESTADO.md
+
+# ---------------------------------------------------------------------------
 # Notas locais: o que e desta maquina ou desta pessoa, e nao de quem clona.
 # O Claude le o CLAUDE.local.md junto com o CLAUDE.md.
 # ---------------------------------------------------------------------------

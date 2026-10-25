@@ -1,8 +1,8 @@
 # YPOD — monitoramento de qualidade do ar (Grupo 5, Internet Industrial das Coisas, PUCPR)
 
 Resumo operacional do projeto: o mínimo para continuar sem recomeçar.
-(Assistentes de código leem este arquivo sozinhos no início da sessão.) O histórico longo está no
-[ESTADO.md](ESTADO.md); como rodar cada parte, no [README.md](README.md).
+(Assistentes de código leem este arquivo sozinhos no início da sessão.)
+Como rodar cada parte: [README.md](README.md).
 
 ## O que o sistema é
 
@@ -232,6 +232,23 @@ Para esquecer a rede salva: segure `BOOT` nos 3 primeiros segundos ao ligar.
 No celular, o Android às vezes volta para os dados móveis por ver que a rede do
 portal não tem internet; aí o navegador não acha o `192.168.4.1`. Desligar os
 dados móveis por um minuto resolve.
+
+**Duas coisas no portal parecem melhoráveis e não são** — as duas já foram
+tentadas do jeito "óbvio" e quebraram:
+
+- O AP sobe em **modo AP puro, não `AP_STA`**, e a varredura de redes acontece
+  **uma vez antes** de ele subir, nunca dentro do handler da página. Com
+  `AP_STA`, a parte cliente continua tentando reconectar na rede antiga, troca
+  de canal e derruba o celular do portal a cada tentativa.
+- No `loop()`, `vento_loop()` e `fonte_loop()` vêm **antes** de qualquer coisa
+  de rede, e o portal não retorna cedo. A primeira versão retornava, e isso
+  desligava a leitura do pod durante o portal — anulando o buffer exatamente na
+  hora em que ele mais importa.
+
+**Hotspot de celular costuma isolar os clientes:** mDNS funciona (multicast) e
+TCP não (unicast), então a ponte aparece e não conecta. Sintoma: sem entrada de
+ARP para ela. Rede de escola pode fazer o mesmo — a da PUCPR não faz. Se fizer,
+o caminho é MQTT com broker, ou o plano B do cabo direto no PC.
 
 LED: azul piscando = procurando Wi-Fi · verde pulsando = recebendo do pod ·
 amarelo = na rede mas sem pod · roxo fixo = portal · vermelho = falha.
