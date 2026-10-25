@@ -32,6 +32,18 @@ function Erro($m) { Write-Host "  $m" -ForegroundColor Red; exit 1 }
 if (-not (Test-Path $banco)) { Erro "Nao achei o banco em $banco" }
 if (-not (Test-Path $Destino)) { New-Item -ItemType Directory -Force $Destino | Out-Null }
 
+# Backup e HISTORICO: nunca pode virar banco de producao. Guardado dentro do
+# projeto ele vira -- alguem confunde com o ypod.db vivo, ou o servidor sobe
+# apontando para a copia. E um backup no mesmo disco e na mesma pasta que o
+# original nao protege de nada: o que mata os dois e o mesmo HD falhando.
+$destinoAbs = (Resolve-Path $Destino).Path.TrimEnd('\')
+$raizAbs = (Resolve-Path $raiz).Path.TrimEnd('\')
+if ($destinoAbs -eq $raizAbs -or $destinoAbs.StartsWith($raizAbs + '\')) {
+    Erro ("O destino esta DENTRO da pasta do projeto:`n    $destinoAbs`n`n" +
+          "  Backup serve para o dia em que esta pasta se perder. Aponte para" +
+          " outro`n  disco, um pendrive ou uma nuvem pessoal.")
+}
+
 # o python da instalacao real, nao o atalho da Microsoft Store
 $py = (Get-Command python -ErrorAction SilentlyContinue).Source
 if (-not $py -or $py -like "*WindowsApps*") {
