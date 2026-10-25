@@ -150,6 +150,31 @@ de 13 dias. Sem PSRAM, caem para 400 linhas
 o PC pede "continue do número tal" — não perde nem duplica. Fora dessa janela, o
 que passou se perde: a ponte não tem cartão SD.
 
+### Gravar o firmware
+
+Os arquivos de `firmware/ypod_bridge/` são **um sketch só**: o compilador junta
+todos e produz um binário, e é ele que vai para a placa.
+
+```
+powershell -ExecutionPolicy Bypass -File tools\gravar_ponte.ps1
+```
+
+Compila e grava pela rede, na placa que atender por `ypod-bridge.local`. A senha
+do OTA sai do `segredos.h`, então não se digita nada. Outras formas:
+
+```
+... -Alvo 192.168.0.50     grava num IP, se o nome não resolver
+... -Porta COM7            grava por cabo, em vez de pela rede
+... -SoCompilar            só confere que compila
+```
+
+**A primeira gravação de uma placa nova é sempre por cabo** — o OTA só existe
+porque já há um firmware rodando que sabe receber. E o cabo vai no conector
+`COM`, não no `USB`: o `USB` é a porta OTG, por onde entra o pod.
+
+Quem autentica o OTA é o firmware **que já está na placa**. Trocar a senha no
+`segredos.h` só passa a valer depois da gravação seguinte.
+
 ### Testar sem o hardware pronto
 
 ```

@@ -93,6 +93,11 @@ ypod monitor/
 YPOD_USB_Leitor.ino
 firmware/YPOD_USB_Leitor/
 
+# Atalho de 4 linhas da versao antiga, que ninguem referencia e que faz uma
+# versao pior do iniciar_ypod.ps1: sem log, sem reinicio, sem a trava que
+# impede duas copias brigarem pela porta 8000.
+iniciar.bat
+
 # Dados de medicao, nao codigo. O servidor importa sozinho qualquer CSV que
 # encontrar em data/ -- entao commitar um e fazer todo clone nascer com medicao
 # de setembro dentro do banco. Os dados vivem no SQLite e no D1.
