@@ -96,7 +96,7 @@ desatualizado**: diz "DevKitC-1" e descreve a alimentação errada. Corrigir.
   economia de rádio **quebram a enumeração USB**: compila, conecta no Wi-Fi, e o
   pod nunca monta. Testado em hardware. Economiza 0,3 W e custa o projeto.
 
-## Painel publico (Cloudflare, conta do Guilherme)
+## Painel publico (Cloudflare)
 
 ```
 ypod_monitor.py --POST /api/push a cada 15 s--> Worker ypod-api --> D1 db-ypod_sm
