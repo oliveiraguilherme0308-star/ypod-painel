@@ -1,0 +1,16 @@
+# Worker da API publica do YPOD.
+# Endereco: https://ypod-api.ypod-sm.workers.dev
+name = "ypod-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true        # https://ypod-api.<subdominio>.workers.dev
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "db-ypod_sm"
+database_id = "7d95af2a-84ed-472d-8b95-2f2149c44021"
+
+# O token de escrita NAO fica aqui (este arquivo vai para o git):
+#   npx wrangler secret put INGEST_TOKEN
+# Para o modo local, crie worker/.dev.vars com a linha INGEST_TOKEN=algum-teste

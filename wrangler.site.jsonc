@@ -1,0 +1,15 @@
+// Site publico do YPOD (o painel), servido pela Cloudflare como arquivos estaticos.
+// Endereco: https://ypod.ypod-sm.workers.dev
+//
+// Publicar de novo (depois de mudar o painel):
+//   python tools/gerar_site.py https://ypod-api.ypod-sm.workers.dev
+//   wrangler deploy -c wrangler.site.jsonc
+//
+// So a pasta site/ sobe. A API (os dados) e outro Worker: worker/.
+{
+  "name": "ypod",
+  "compatibility_date": "2026-10-06",
+  "assets": {
+    "directory": "site"
+  }
+}

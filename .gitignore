@@ -1,0 +1,91 @@
+# ATENCAO ao editar: o git so trata "#" como comentario quando ele e o PRIMEIRO
+# caractere da linha. Comentario no fim da linha vira parte do padrao e a regra
+# deixa de casar em silencio -- foi assim que a senha do OTA quase subiu.
+# Comentario sempre em linha propria.
+
+# ---------------------------------------------------------------------------
+# Segredos. Nada aqui pode ir para o GitHub.
+# ---------------------------------------------------------------------------
+# senha do OTA; o modelo segredos.exemplo.h vai, este nao
+firmware/ypod_bridge/segredos.h
+# INGEST_TOKEN do modo local do wrangler
+worker/.dev.vars
+# cache do wrangler: guarda id de conta e sessao
+worker/.wrangler/
+.env
+*.token
+
+# ---------------------------------------------------------------------------
+# Gerado por teste. Os testes refazem sozinhos; o voltest sozinho tem 574 MB.
+# ---------------------------------------------------------------------------
+testes/voltest/
+testes/nuventest/
+testes/nettest/
+testes/mqtttest/
+testes/influxtest/
+testes/contrato/
+testes/_grav/
+
+# ---------------------------------------------------------------------------
+# Compilado e cache
+# ---------------------------------------------------------------------------
+firmware/*/build/
+__pycache__/
+*.pyc
+node_modules/
+
+# ---------------------------------------------------------------------------
+# Banco de dados local.
+# Binario que muda a cada minuto: no git viraria um commit gigante por dia e
+# daria conflito a cada sincronizacao, sem jeito de resolver (nao da para fazer
+# merge de SQLite). Os dados ja moram em dois lugares -- o D1 na Cloudflare e o
+# PC da escola -- e saem pelo botao "Baixar CSV" do painel.
+#
+# Os CSV ficam: sao texto, nao mudam depois de escritos, e o servidor importa
+# sozinho o que encontrar em data/ -- entao um clone novo ja nasce com o
+# historico antigo dentro.
+# ---------------------------------------------------------------------------
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# ---------------------------------------------------------------------------
+# Site publicado: e GERADO a partir de static/dashboard.html.
+# Versionar o gerado e como ter duas copias do painel, que foi exatamente o
+# risco que a gente quis evitar. Para publicar, a partir de qualquer clone:
+#   python tools/gerar_site.py https://ypod-api.ypod-sm.workers.dev
+#   npx wrangler deploy -c wrangler.site.jsonc
+# ---------------------------------------------------------------------------
+site/
+
+# ---------------------------------------------------------------------------
+# Anotacao pessoal, nao faz parte do projeto.
+# Era um status update de uma sessao para outra -- mistura arquitetura, diario
+# de problemas e pendencias, e cita credencial pendente de revogacao. O que
+# tinha de duravel ja foi para o CLAUDE.md e o ESTADO.md.
+# ---------------------------------------------------------------------------
+ATUALIZACAO-24-10.md
+
+# ---------------------------------------------------------------------------
+# Fora do repositorio, preservados no disco
+# ---------------------------------------------------------------------------
+# A primeira versao do projeto, substituida. Carrega copias byte a byte
+# identicas do chart.umd.min.js e do CSV que ja estao na raiz, e faz quem abre
+# o repositorio encontrar dois ypod_monitor.py sem saber qual vale.
+ypod monitor/
+
+# Identico a firmware/YPOD_USB_Leitor/YPOD_USB_Leitor.ino.
+/YPOD_USB_Leitor.ino
+
+# O diagrama esta DESATUALIZADO: diz DevKitC-1 (e uma YD-ESP32-S3), descreve a
+# alimentacao errada e nao tem os sensores de vento. Diagrama errado e pior que
+# diagrama nenhum -- alguem pode montar seguindo ele. Volta quando for corrigido.
+Diagrama_Esquematico_*.pdf
+
+# ---------------------------------------------------------------------------
+# Pacotes e copias
+# ---------------------------------------------------------------------------
+*.zip
+YPOD-Windows11-HTTPS-Publico-Independente/
+YPOD-Windows11-Rede-Interna/
