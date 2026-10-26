@@ -214,6 +214,12 @@ async function live(env) {
       new Date(e.live_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) +
       ". O histórico abaixo continua disponível.";
   }
+  // O IQAr e media de 24 h. Passado esse tempo sem o PC enviar, o indice
+  // guardado nao descreve mais nenhuma janela de 24 h que exista -- e deixar
+  // um numero de qualidade do ar no ar como se fosse de agora e pior que nao
+  // mostrar nenhum. O historico abaixo dele continua valendo.
+  if (desde > 24 * 3600) delete s.iqar;
+
   delete s.fields; delete s.groups; delete s.influx; delete s.nuvem;
   s.server_time = Date.now();
   return s;
