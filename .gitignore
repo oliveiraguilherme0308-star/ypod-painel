@@ -10,8 +10,11 @@
 firmware/ypod_bridge/segredos.h
 # INGEST_TOKEN do modo local do wrangler
 worker/.dev.vars
-# cache do wrangler: guarda id de conta e sessao
-worker/.wrangler/
+# cache do wrangler: guarda id de conta e sessao.
+# SEM barra na frente: pega em qualquer pasta. A regra antiga era
+# "worker/.wrangler/", e o deploy do site roda na RAIZ -- criou um .wrangler/
+# ali que a regra nao cobria, e ele entrou num commit em 26/10.
+.wrangler/
 .env
 *.token
 
