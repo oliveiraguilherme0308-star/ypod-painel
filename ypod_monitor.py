@@ -55,19 +55,34 @@ DB_PATH = os.path.join(DATA_DIR, "ypod.db")
 #   2026-07-30T04:25:39,,,YPODV6,YPOD_V4.2.1,,,22.66,61.41,,2537,235,65535,,3823,2970,748.00,4,6,6,
 #   [0]                 1 2 [3]  [4]         5 6 [7]  [8]   9 [10][11][12] 13[14][15][16]  [17-19]
 #
-# Os indices abaixo sao a unica coisa que voce precisa mexer se algum sensor
-# estiver rotulado errado: troque o "label"/"unit" ou o indice e pronto.
+# Este mapa NAO foi deduzido: foi lido do firmware do proprio pod, em
+# github.com/HanniganAirQuality/YPOD, pasta YPOD_V4.2.1 -- a mesma versao que
+# este pod informa no campo 4. A ordem das colunas sai do .ino e a identidade
+# dos sensores sai do cabecalho de ads_module.h:
+#
+#   "ADS1115 to include Fig 2600, Fig 2602, MiCS-2611, CO-B4"
+#
+# Dois campos eram rotulados errado ate 25/10: o 12 nao era um terceiro MOx, e
+# sim o sensor de OZONIO (MiCS-2611), e o 15 nao era "auxiliar/O3", e sim o
+# segundo eletrodo do MESMO sensor de CO (o Alphasense CO-B4 tem eletrodo ativo
+# e auxiliar, este ultimo para compensar deriva termica).
+#
 # (Colunas novas sao criadas no banco sozinhas; as antigas ficam.)
 #
 #   idx, chave, rotulo, unidade, grupo, slot de cor
 FIELDS = [
     (7,  "temp",    "Temperatura",  "°C",     "clima",   1),
     (8,  "rh",      "Umidade rel.", "%",      "umidade", 3),
-    (10, "fig2600", "Figaro 2600",  "ADC",    "gases",   1),
-    (11, "fig2602", "Figaro 2602",  "ADC",    "gases",   2),
-    (12, "mox3",    "MOx 3",        "ADC",    "gases",   3),
-    (14, "co",      "CO",           "ADC",    "gases",   4),
-    (15, "aux",     "Aux / O3",     "ADC",    "gases",   7),
+    # Campos 9 e 13 so sao preenchidos com CALIBRATE = 1 no YPOD_node.h do pod.
+    # Hoje saem vazios -- e e por isso que falta o COV, que e requisito do
+    # projeto. Mapeados desde ja: ligada a calibracao, o dado cai sozinho aqui.
+    (9,  "tvoc",    "COV total",    "",       "cov",     1),
+    (10, "fig2600", "TGS2600",      "ADC",    "gases",   1),
+    (11, "fig2602", "TGS2602",      "ADC",    "gases",   2),
+    (12, "o3",      "Ozônio",       "ADC",    "gases",   3),
+    (13, "co",      "CO",           "ppm",    "co",      1),
+    (14, "co_we",   "CO · eletrodo ativo", "ADC", "gases", 4),
+    (15, "co_ae",   "CO · eletrodo aux.",  "ADC", "gases", 7),
     (16, "co2",     "CO₂",          "ppm",    "co2",     2),
     (17, "pm1",     "PM1.0",        "µg/m³",  "pm",      1),
     (18, "pm25",    "PM2.5",        "µg/m³",  "pm",      2),
@@ -86,8 +101,10 @@ GROUPS = [
     ("clima",   "Temperatura",           "°C"),
     ("umidade", "Umidade relativa",      "%"),
     ("co2",     "CO₂",                   "ppm"),
+    ("co",      "Monóxido de carbono",   "ppm"),
     ("pm",      "Material particulado",  "µg/m³"),
-    ("gases",   "Sensores de gas (MOx)", "contagens ADC"),
+    ("cov",     "Compostos orgânicos voláteis", ""),
+    ("gases",   "Sinal bruto dos sensores de gás", "contagens ADC"),
     ("vento_vel", "Velocidade do vento",  "rpm"),
     ("vento_dir", "Direção do vento",     "graus"),
 ]
@@ -99,6 +116,19 @@ INVALID = {-999.0, 9999.0}
 # com os MOx ainda aquecendo). Qualquer coisa nessa faixa e lixo, nao leitura --
 # deixar passar vira um paredao que achata a escala do grafico de gases.
 SATURADO = 60000.0
+# O que cada valor acima de 60000 significa, lido do read_raw() em
+# ads_module.cpp do firmware do pod:
+#
+#   64537  o ADS1115 nao inicializou. A funcao devolve -999 de um uint16_t, e
+#          -999 em 16 bits sem sinal e 64537. Aparece nas cinco colunas de gas
+#          ao mesmo tempo, em geral logo depois de energizar (I2C ainda nao
+#          pronto). Nos dados ate 25/10: 6 linhas em 3246.
+#   65535  a leitura do canal deu -1 em int16: entrada aberta le um pouco
+#   65534  abaixo de zero. Sensor solto, morto, ou canal sem nada ligado.
+#
+# No pod desta estacao, o canal 12 (ozonio, MiCS-2611) esta em 65535/65534 em
+# 99,2% das leituras, enquanto os outros quatro canais do MESMO ADS1115 vao bem
+# em 99,8%. Isso e sensor, nao conversor.
 
 # Uma linha inteira do pod tem EXATAMENTE 21 campos (a virgula final conta como
 # um campo vazio); 22 quando a ponte acrescenta os dois do vento.
@@ -127,6 +157,11 @@ FAIXAS = {
     "temp":      (-40.0, 85.0),      # faixa do proprio sensor
     "rh":        (0.0, 100.0),       # umidade relativa, por definicao
     "co2":       (0.0, 20000.0),     # acima disso nao e ar respiravel
+    # CO calibrado: a equacao embarcada do pod pode devolver um pouco abaixo de
+    # zero quando a concentracao e baixa -- deriva normal de sensor
+    # eletroquimico. Cortar em zero esconderia isso; a faixa aceita a deriva e
+    # barra o disparate.
+    "co":        (-10.0, 2000.0),
     "pm1":       (0.0, 2000.0),
     "pm25":      (0.0, 2000.0),
     "pm10":      (0.0, 2000.0),

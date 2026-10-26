@@ -502,11 +502,23 @@ nenhuma delas é paranoia: as quatro situações abaixo aconteceram de verdade.
    de 0 a 100% — descarta **o valor**, não a linha: os outros sensores da mesma
    linha podem estar bons.
 
-Além disso: `-999` e `9999` são sentinelas de inválido, e `>= 60000` é canal
-saturado ou sensor desconectado. O pod manda **65535, 65534 e 64537**
-alternando (este último nos primeiros minutos depois de energizar, com os MOx
-ainda aquecendo) — filtrar só o 65535 deixa passar picos de 65 mil que achatam
-a escala de todos os gráficos de gás.
+Além disso, `-999` e `9999` são sentinelas de inválido. E tudo acima de
+`60000` tem significado conhecido — os valores saem do `read_raw()` do firmware
+do pod, não são aleatórios:
+
+| valor | o que é |
+|---|---|
+| **64537** | o conversor ADS1115 não inicializou. A função devolve `-999` de um `uint16_t`, e `-999` em 16 bits sem sinal é 64537. Aparece nos cinco canais de gás ao mesmo tempo |
+| **65535** | a leitura deu `-1` em `int16`: entrada aberta lê um pouco abaixo de zero |
+| **65534** | a leitura deu `-2`: o mesmo |
+
+Filtrar só o 65535 deixa passar picos de 65 mil que achatam a escala de todos
+os gráficos de gás.
+
+**Neste pod, o canal de ozônio está morto.** O MiCS-2611 lê negativo em 99,2%
+das leituras, enquanto os outros quatro canais do mesmo ADS1115 vão bem em
+99,8%. Isso é o sensor, não o conversor — e ozônio não está entre os parâmetros
+que o projeto exige, então não bloqueia nada.
 
 Data impossível (`2000-84-90T00:03:00`) derruba a linha inteira: não é relógio
 desacertado, é sinal de que o pod estava em mau estado quando montou a linha.

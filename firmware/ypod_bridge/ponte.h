@@ -221,9 +221,12 @@ const long YPOD_BAUD   = 9600;
 #define IDX_POD_ID        3
 #define IDX_FIRMWARE      4
 // numericos: {indice, e_circular}
-#define CAMPOS_MEDIA { {7,0},{8,0},{10,0},{11,0},{12,0},{14,0},{15,0},{16,0}, \
-                       {17,0},{18,0},{19,0},{20,0},{21,1} }
-#define N_CAMPOS_MEDIA    13
+// Os campos 9 (COV) e 13 (CO calibrado) so tem valor com CALIBRATE = 1 no
+// firmware do pod. Entram aqui de qualquer forma: campo vazio nao soma nada, e
+// no dia em que a calibracao for ligada a media ja funciona sem mexer em nada.
+#define CAMPOS_MEDIA { {7,0},{8,0},{9,0},{10,0},{11,0},{12,0},{13,0},{14,0}, \
+                       {15,0},{16,0},{17,0},{18,0},{19,0},{20,0},{21,1} }
+#define N_CAMPOS_MEDIA    15
 
 // --------------------------------------------------------------------------
 // 4. Limites

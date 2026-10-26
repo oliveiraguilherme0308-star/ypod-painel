@@ -20,9 +20,9 @@ assert r is not None, "a linha boa foi rejeitada"
 _, v, meta = r
 assert abs(v["temp"] - 28.84) < 0.01, v["temp"]
 assert abs(v["rh"] - 61.27) < 0.01, v["rh"]
-assert v["mox3"] is None, "65535 e canal saturado, deveria sair vazio"
+assert v["o3"] is None, "65535 no canal do ozonio: entrada aberta, sai vazio"
 assert meta["pod_id"] == "YPODV6", meta
-print("[ok] linha normal: temp %.2f, rh %.2f, mox3 vazio, pod %s"
+print("[ok] linha normal: temp %.2f, rh %.2f, ozonio vazio, pod %s"
       % (v["temp"], v["rh"], meta["pod_id"]))
 
 # com o vento que a ponte acrescenta no fim
