@@ -129,6 +129,28 @@
                  background: color-mix(in srgb, var(--s1) 9%, var(--surface-1)); }
   .banner.info b { color: var(--s1); }
 
+  /* O IQAr é a resposta; os cards abaixo são as medidas de onde ela saiu.
+     Por isso ele não é mais um card: tem peso próprio e a cor da faixa. */
+  .iqar {
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-left: 6px solid var(--iqar-cor, var(--border));
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;
+  }
+  .iqar-num { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+  .iqar-num strong {
+    font-size: 52px; line-height: 1; font-weight: 600;
+    font-variant-numeric: tabular-nums; color: var(--iqar-cor, var(--text-1));
+  }
+  .iqar-num span {
+    font-size: 19px; font-weight: 600; color: var(--iqar-cor, var(--text-1));
+    white-space: nowrap;
+  }
+  .iqar-txt { flex: 1 1 260px; min-width: 0; }
+  .iqar-txt h2 { font-size: 14px; margin: 0 0 4px; color: var(--text-2); font-weight: 550; }
+  .iqar-txt p { margin: 0; font-size: 13.5px; color: var(--text-2); line-height: 1.45; }
+  .iqar-nota { margin-top: 6px !important; font-size: 12.5px !important; color: var(--text-3) !important; }
+
   .cards {
     display: grid; gap: 12px; margin-bottom: 24px;
     grid-template-columns: repeat(auto-fill, minmax(198px, 1fr));
@@ -230,6 +252,18 @@
     <div class="quick" id="quick"></div>
     <p class="hint" id="rangeHint"></p>
   </div>
+
+  <section class="iqar" id="iqar" hidden>
+    <div class="iqar-num">
+      <strong id="iqarValor">—</strong>
+      <span id="iqarClasse">—</span>
+    </div>
+    <div class="iqar-txt">
+      <h2>Índice de Qualidade do Ar</h2>
+      <p id="iqarDetalhe"></p>
+      <p class="iqar-nota" id="iqarNota"></p>
+    </div>
+  </section>
 
   <section class="cards" id="cards"></section>
 
@@ -338,6 +372,39 @@ function drawSpark(canvas, values, color) {
 }
 
 /* ---------- cards ---------- */
+// Nomes dos poluentes para a legenda. A legenda não é enfeite: esta estação
+// mede dois dos seis poluentes do índice, e um número de qualidade do ar sem
+// dizer de onde saiu é pior que número nenhum.
+const NOME_POL = { pm25: "MP2,5", pm10: "MP10", co: "CO",
+                   o3: "O₃", no2: "NO₂", so2: "SO₂" };
+
+function renderIqar(iq) {
+  const el = $("iqar");
+  if (!iq) { el.hidden = true; return; }
+  el.hidden = false;
+  el.style.setProperty("--iqar-cor", iq.cor);
+  $("iqarValor").textContent = iq.indice;
+  $("iqarClasse").textContent = iq.classe;
+
+  const dom = NOME_POL[iq.dominante] || iq.dominante;
+  const h = (iq.janelas_h && iq.janelas_h[iq.dominante]) || 24;
+  const media = iq.medias && iq.medias[iq.dominante];
+  let txt = "Determinado pelo " + dom;
+  if (media !== undefined) {
+    txt += ", com média de " + media + (iq.dominante === "co" ? " ppm" : " µg/m³");
+  }
+  txt += " nas últimas " + h + " h.";
+  $("iqarDetalhe").textContent = txt;
+
+  const usados = (iq.calculado_com || []).map(p => NOME_POL[p] || p);
+  const faltam = ["pm25", "pm10", "o3", "no2", "co", "so2"]
+    .filter(p => !(iq.calculado_com || []).includes(p))
+    .map(p => NOME_POL[p] || p);
+  let nota = "Calculado com " + usados.join(" e ") + ".";
+  if (faltam.length) nota += " Sem " + faltam.join(", ") + " — o índice é parcial.";
+  $("iqarNota").textContent = nota;
+}
+
 function renderCards(cards) {
   const box = $("cards");
   for (const cd of cards) {
@@ -528,6 +595,7 @@ async function tickLive() {
     return;
   }
   renderStatus(s);
+  renderIqar(s.iqar);
   if (!fieldsMeta) { fieldsMeta = s.cards; }
   renderCards(s.cards);
   if (mode === "live" && Date.now() - lastChartDraw >= CHART_REFRESH) loadWindow();
