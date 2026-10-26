@@ -129,6 +129,13 @@
                  background: color-mix(in srgb, var(--s1) 9%, var(--surface-1)); }
   .banner.info b { color: var(--s1); }
 
+  /* O atributo hidden do HTML vira display:none pela folha do NAVEGADOR, e
+     qualquer regra de autor com display vence ela. Sem esta linha, um elemento
+     com classe que define display (como .iqar, que é flex) fica "escondido"
+     no código e visível na tela. Aconteceu: o bloco do índice aparecia vazio
+     quando não havia índice para mostrar. */
+  [hidden] { display: none !important; }
+
   /* O IQAr é a resposta; os cards abaixo são as medidas de onde ela saiu.
      Por isso ele não é mais um card: tem peso próprio e a cor da faixa. */
   .iqar {

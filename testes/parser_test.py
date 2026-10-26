@@ -84,4 +84,21 @@ print("[ok] direcao de 400 graus descartada, velocidade mantida")
 assert y.parse_line("2026-07-31T10:53:37,,,YPODV6,YPOD_V4.2.1,,,28.84") is None
 print("[ok] linha curta demais rejeitada")
 
+
+# --- 7. o painel esconde de verdade o que marca como escondido -------------
+# O atributo hidden do HTML e display:none pela folha do navegador, e qualquer
+# regra de autor com display vence ela. O bloco do IQAr tem display:flex --
+# sem uma regra explicita para [hidden], ele aparecia vazio no site publicado.
+import re as _re
+_painel = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "static", "dashboard.html")
+_html = open(_painel, encoding="utf-8").read()
+_usa_hidden = _re.findall(r"\.hidden\s*=|<\w+[^>]*\shidden[\s>]", _html)
+assert _usa_hidden, "ninguem usa hidden? conferir este teste"
+assert _re.search(r"\[hidden\]\s*\{[^}]*display\s*:\s*none", _html), (
+    "o painel usa hidden em %d lugares mas nao tem regra [hidden]{display:none}"
+    % len(_usa_hidden))
+print("[ok] painel: %d usos de hidden, com a regra CSS que os faz valer"
+      % len(_usa_hidden))
+
 print("\nTUDO PASSOU")
