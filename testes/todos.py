@@ -1,4 +1,4 @@
-"""
+﻿"""
 Roda a suite inteira e devolve codigo de saida 0 so se tudo passar.
 
     python testes/todos.py            # os rapidos (~1 min)
@@ -23,6 +23,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 # importacao aparecer em 2 s em vez de depois de um minuto de rede.
 RAPIDOS = [
     "parser_test.py",      # formato da linha, lixo do pod
+    "iqar_test.py",        # indice de qualidade do ar (CONAMA 506/2024)
     "vento_test.py",       # media circular da direcao
     "gravacao_test.py",    # media por minuto
     "contrato_test.py",    # firmware <-> servidor

@@ -186,6 +186,105 @@ CSV_HEADER = ["pc_time", "pod_time", "pod_id", "firmware"] + KEYS + ["raw"]
 # do SQL e na hora de ler o resultado.
 CIRCULARES = ("vento_dir",)
 
+# ---------------------------------------------------------------------------
+# IQAr - Indice de Qualidade do Ar (CONAMA 506/2024)
+# ---------------------------------------------------------------------------
+# O indice e o MAIOR entre os sub-indices de cada poluente. Cada sub-indice sai
+# de interpolacao linear dentro da faixa onde a concentracao caiu:
+#
+#     I = Iini + (Ifin - Iini)/(Cfin - Cini) * (C - Cini)      [Equacao 1]
+#
+# ORIGEM DE CADA LIMITE, porque isto vai para um trabalho que cita a norma:
+#
+#   fim da faixa "Boa"   CONAMA 506/2024, Anexo II -- lido da integra da
+#                        resolucao. E a unica faixa que a resolucao define;
+#                        sao os valores-guia da OMS 2021.
+#   Moderada -> Ruim     padrao intermediario PI-2, CONAMA 506/2024 Anexo I.
+#   Ruim -> Muito Ruim   Interim Target 1 (IT-1) da OMS 2021.
+#   M. Ruim -> Pessima   nivel de atencao, CONAMA 491/2018.
+#
+# A tabela inteira foi CONFERIDA contra a Tabela 5 do "Relatorio de Evolucao da
+# Qualidade do Ar da RMGV - 2024" do IEMA-ES, que reproduz as faixas novas e
+# cita a Orientacao Tecnica do MMA (jan/2025) textualmente -- o PDF do MMA so
+# abre com login no gov.br. Os limites de MP10 e MP2,5 batem nos cinco niveis,
+# inclusive os topos da faixa "Pessima" (600 e 300).
+#
+# O CO naquele relatorio esta em µg/m³ porque o IEMA converteu; a norma usa
+# ppm. A 25 °C, 9 ppm = 10.311 µg/m³, e a tabela deles diz 10.314 -- os quatro
+# limites conferem, entao em ppm sao 9, 11, 13 e 15, como esta aqui.
+#
+# O unico numero que NAO e da norma e o teto de 50 ppm no fim da faixa do CO:
+# a norma deixa "Pessima" aberta, e aqui ele existe so para a interpolacao
+# parar em 400 em vez de crescer sem limite.
+#
+# PERIODO DE MEDIA (Anexo I): MP10 e MP2,5 em 24 h; O3 e CO em 8 h; NO2 em 1 h.
+# Nao e o valor do minuto -- e media movel. Ver iqar_de_janela().
+#
+#   poluente: [(Cini, Iini, Cfin, Ifin), ...]
+IQAR_FAIXAS = {
+    "pm25": [(0, 0, 15, 40), (15, 40, 50, 80), (50, 80, 75, 120),
+             (75, 120, 125, 200), (125, 200, 300, 400)],
+    "pm10": [(0, 0, 45, 40), (45, 40, 100, 80), (100, 80, 150, 120),
+             (150, 120, 250, 200), (250, 200, 600, 400)],
+    "co":   [(0, 0, 9, 40), (9, 40, 11, 80), (11, 80, 13, 120),
+             (13, 120, 15, 200), (15, 200, 50, 400)],
+}
+# Horas de media exigidas por poluente (Anexo I da 506/2024).
+IQAR_JANELA_H = {"pm25": 24, "pm10": 24, "co": 8}
+
+# Faixas de classificacao: (limite superior do indice, nome, cor)
+IQAR_CLASSES = [
+    (40,  "Boa",        "#00b050"),
+    (80,  "Moderada",   "#ffd600"),
+    (120, "Ruim",       "#ff8c00"),
+    (200, "Muito ruim", "#e53935"),
+    (400, "Péssima",    "#7b1fa2"),
+]
+
+
+def iqar_sub(valor, poluente):
+    """Sub-indice de um poluente, ou None se nao houver faixa para ele."""
+    faixas = IQAR_FAIXAS.get(poluente)
+    if faixas is None or valor is None:
+        return None
+    for c_ini, i_ini, c_fim, i_fim in faixas:
+        if c_ini <= valor <= c_fim:
+            if c_fim == c_ini:
+                return float(i_ini)
+            return (i_fim - i_ini) / (c_fim - c_ini) * (valor - c_ini) + i_ini
+    return 400.0 if valor > faixas[-1][2] else None
+
+
+def iqar_classe(indice):
+    for limite, nome, cor in IQAR_CLASSES:
+        if indice <= limite:
+            return nome, cor
+    return IQAR_CLASSES[-1][1], IQAR_CLASSES[-1][2]
+
+
+def iqar(medias):
+    """Recebe {poluente: concentracao media no periodo} e devolve o indice.
+
+    Devolve None quando nenhum poluente do indice tem dado. O campo
+    `calculado_com` existe porque esta estacao so mede parte dos poluentes: o
+    O3 esta com o sensor morto, NO2 e SO2 nao sao medidos, e o CO so tem
+    unidade fisica depois que a calibracao do pod for ligada. Publicar o indice
+    sem dizer de onde ele saiu seria passar por completo o que e parcial.
+    """
+    subs = {}
+    for pol, valor in medias.items():
+        s = iqar_sub(valor, pol)
+        if s is not None:
+            subs[pol] = round(s)
+    if not subs:
+        return None
+    dominante = max(subs, key=subs.get)
+    indice = subs[dominante]
+    nome, cor = iqar_classe(indice)
+    return {"indice": indice, "classe": nome, "cor": cor,
+            "dominante": dominante, "sub": subs,
+            "calculado_com": sorted(subs)}
+
 
 def _sen_g(graus):
     return None if graus is None else math.sin(math.radians(graus))
@@ -364,6 +463,33 @@ class Db:
             took = time.time() - t
             if took > 1:
                 print("[db] resumo por minuto reconstruido em %.0fs" % took)
+
+    def iqar_agora(self, ate=None):
+        """IQAr no instante `ate`, com a janela de media que a norma pede.
+
+        Cada poluente tem periodo proprio (MP em 24 h, CO em 8 h), entao e uma
+        consulta por poluente -- nao uma janela so. Sai do resumo por minuto,
+        que ja existe, e por isso custa quase nada mesmo com meses gravados.
+        """
+        self.refresh_rollup()
+        c = self.conn()
+        fim = time.time() if ate is None else ate
+        medias, amostras = {}, {}
+        for pol, horas in IQAR_JANELA_H.items():
+            m0 = int((fim - horas * 3600) // 60)
+            m1 = math.ceil(fim / 60)
+            row = c.execute(
+                "SELECT SUM(%s_s), SUM(%s_n) FROM roll_min WHERE m >= ? AND m < ?"
+                % (pol, pol), (m0, m1)).fetchone()
+            if row and row[1]:
+                medias[pol] = row[0] / row[1]
+                amostras[pol] = row[1]
+        r = iqar(medias)
+        if r is not None:
+            r["janelas_h"] = {p: IQAR_JANELA_H[p] for p in r["calculado_com"]}
+            r["amostras"] = {p: amostras[p] for p in r["calculado_com"]}
+            r["medias"] = {p: round(medias[p], 2) for p in r["calculado_com"]}
+        return r
 
     def series(self, t0, t1):
         self.refresh_rollup()
@@ -1010,7 +1136,12 @@ def live_state():
         cards.append(dict(info, value=cur, spark=spark,
                           delta=(round(cur - before, 2)
                                  if cur is not None and before is not None else None)))
+    try:
+        indice = DB.iqar_agora()
+    except Exception:                                 # noqa: BLE001
+        indice = None            # o indice nunca derruba a tela ao vivo
     return {
+        "iqar": indice,
         "status": LIVE.status, "detail": LIVE.detail, "source": LIVE.source,
         "stale": age is None or age > STALE_AFTER,
         "age": None if age is None else round(age, 1),
