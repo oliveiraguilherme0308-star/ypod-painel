@@ -11,12 +11,8 @@ Vargas. Professor: Ricardo Alexandre Diogo.
 
 Painel público: <https://ypod.ypod-sm.workers.dev>
 
-| documento | para quem |
-|---|---|
-| [`docs/MANUAL.md`](docs/MANUAL.md) | manual do usuário: ler o painel, instalar, operar |
-| [`docs/TESTES.md`](docs/TESTES.md) | procedimento de testes de hardware e software |
-| [`docs/IMPLEMENTACAO.md`](docs/IMPLEMENTACAO.md) | fluxo de implementação em campo, requisitos atendidos e restrições |
-| este arquivo | referência técnica: como cada parte roda |
+Este arquivo é a referência técnica do projeto: como montar, gravar e rodar
+cada parte.
 
 ---
 

@@ -104,6 +104,17 @@ NA-ESCOLA.md
 CLAUDE.local.md
 
 # ---------------------------------------------------------------------------
+# Entregaveis da disciplina, nao do sistema.
+#
+# Manual do usuario, procedimento de testes e o documento da etapa de
+# implementacao sao escritos para a banca e para o colegio: tem secao de
+# rubrica, sustentabilidade e "resumo para a banca". O criterio deste
+# repositorio e o necessario para IMPLEMENTAR o sistema, e isso o README
+# cobre. Os tres vivem na pasta de entrega, no disco, fora do git.
+# ---------------------------------------------------------------------------
+docs/
+
+# ---------------------------------------------------------------------------
 # Fora do repositorio, preservados no disco
 # ---------------------------------------------------------------------------
 # A primeira versao do projeto, substituida. Carrega copias byte a byte
