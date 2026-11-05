@@ -48,7 +48,12 @@ bancada é o erro mais caro possível neste projeto.
 > **Ponto de decisão 2:** ponte visível pelo PC da escola, pela rede final — não
 > por hotspot de celular, que isola clientes e esconde esse problema.
 
-### Fase 3 — Instalação em altura
+### Fase 3 — Instalação no local
+
+> **Como está hoje:** a estação foi instalada num **terraço aberto**, local
+> provisório acordado com o professor responsável do colégio, e não sobre a
+> caixa d'água a ~15 m como previa a Concepção. Ver restrição 9. Os passos
+> abaixo descrevem a instalação definitiva.
 
 1. Içar o gabinete fechado. Fixar na estrutura da caixa d'água.
 2. Orientar e fixar a biruta, **anotando a posição do norte geográfico**.
@@ -297,10 +302,9 @@ Hoje compara os três e a mensagem de falha nomeia as chaves divergentes.
 sem alimentação, e o pod nunca enumeraria. O sintoma seria idêntico ao da
 restrição 1 e levaria horas de diagnóstico na direção errada.
 
-**Dá para corrigir a tempo?** Sim, é redesenho de documento. **É o item mais
-urgente desta lista**, porque um diagrama errado é pior que diagrama nenhum: ele
-é seguido com confiança. Até a correção, ele está fora do repositório de
-propósito.
+**Dá para corrigir a tempo?** Sim, é redesenho de documento, e **está em
+correção**. Um diagrama errado é pior que diagrama nenhum: ele é seguido com
+confiança. Até a nova versão, ele está fora do repositório de propósito.
 
 ### Restrição 8 — Ferramenta de gravação sem driver no Windows
 
@@ -316,6 +320,46 @@ para o caminho errado.
 **Como foi resolvido.** Executar uma vez, como administrador, o instalador de
 driver que acompanha o núcleo. Está documentado no [README](../README.md).
 
+### Restrição 9 — O ponto de instalação previsto não estava disponível
+
+**O que é.** A Concepção definiu, junto com o cliente, medição sobre a caixa
+d'água a cerca de 15 m. Na implementação esse ponto não pôde ser usado, e foi
+acordado com o professor responsável do colégio um **local provisório: um
+terraço aberto**.
+
+**O que afeta.** O terraço é ambiente externo e representativo do ar do
+entorno, então a medição vale. O que muda é a **altura**: mais perto do solo, a
+leitura sofre mais influência local — poeira ressuspensa, o próprio prédio como
+obstáculo, e um padrão de vento diferente do que se mediria a 15 m. Os dados do
+período provisório não são diretamente comparáveis aos que virão depois da
+mudança para o ponto definitivo.
+
+**Dá para corrigir a tempo?** Depende de autorização e de trabalho em altura sob
+NR-35, não do grupo. **A mitigação é de registro:** a data da mudança de local
+precisa ficar marcada na série histórica, para que ninguém compare dois períodos
+medidos em alturas diferentes como se fossem o mesmo ponto.
+
+### Restrição 10 — A proteção contra tempo está incompleta
+
+**O que é.** O requisito era gabinete IP65+ para o conjunto. Hoje **as baterias
+estão protegidas em IP65**; a caixa que abriga o ESP32 e o regulador, e o
+próprio pod, **não estão**.
+
+**O que afeta.** É a pendência de maior risco em campo. Água no regulador ou na
+ponte interrompe a coleta; água no pod danifica o instrumento mais caro do
+sistema, que pertence ao colégio e é insubstituível no prazo do projeto. Chuva
+com vento num terraço aberto atinge exatamente esses dois pontos.
+
+**Dá para corrigir a tempo?** **Sim, e é a pendência mais urgente em campo.**
+É a compra de um gabinete IP65 com prensa-cabos e a transferência das duas
+peças, sem alteração de projeto elétrico nem de firmware. Até lá, a estação não
+deve ficar exposta a chuva forte sem acompanhamento.
+
+> O pod tem entradas de ar obrigatórias para o sensor de particulado e para o
+> de temperatura e umidade: a proteção dele não é uma caixa vedada, e sim um
+> **abrigo ventilado** — o *radiation shield* já previsto na Concepção, que
+> protege de chuva e sol direto sem bloquear a troca de ar.
+
 ---
 
 ## 5. Resumo para a banca
@@ -328,5 +372,7 @@ driver que acompanha o núcleo. Está documentado no [README](../README.md).
 | 4 | Buffer de 24 h não cabia | requisito principal | **Resolvido e superado** |
 | 5 | PC desliga fora do horário | continuidade da coleta | Sim, configuração |
 | 6 | Contrato em três arquivos | integridade do histórico | **Resolvido** |
-| 7 | Esquemático desatualizado | quem for montar | Sim, e é o mais urgente |
+| 7 | Esquemático desatualizado | quem for montar | Sim — em correção |
 | 8 | Driver de gravação | habilitar calibração | **Resolvido** |
+| 9 | Ponto definitivo indisponível | altura e comparabilidade | Depende de autorização; mitigado por registro |
+| 10 | **Proteção IP65 incompleta** | risco de perda do instrumento | **Sim — a pendência mais urgente em campo** |

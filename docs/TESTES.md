@@ -179,8 +179,8 @@ medido hoje.
 | Wi-Fi 2,4 GHz | — | **Atendido** | −58 a −60 dBm medidos na escola |
 | MQTT | — | **Parcial** | escrito e testado contra broker real; desligado porque o broker da escola não foi definido |
 | Histórico de 30 dias no painel | 30 dias | **Atendido** | janela por data/hora; exportação até 30 dias aberta |
-| Gabinete IP65+ | — | **Pendente** | confirmar com o grupo |
-| Operação contínua por solar | — | **Confirmar** | projeto definido; estado da instalação a confirmar |
+| Gabinete IP65+ | todo o conjunto | **Parcial** | baterias protegidas; caixa do ESP e o pod ainda não |
+| Operação contínua por solar | — | **Atendido** | instalada e energizada no terraço |
 | Calibração cruzada com o Y-Pod | periódica | **Pendente** | protocolo definido, ainda não executado |
 
 ### Requisito superado, e por quê importa
@@ -208,8 +208,8 @@ colégio e estão no slide de alinhamento da Concepção.
 
 | O que o cliente pediu | Situação | Como se verifica |
 |---|---|---|
-| Medição **externa**, sobre a caixa d'água (~15 m) | **Confirmar** | inspeção do local de instalação |
-| Estação **fixa**, operação contínua por solar | **Confirmar** | estação energizada sem rede elétrica por 72 h |
+| Medição **externa**, sobre a caixa d'água (~15 m) | **Parcial, acordado** | instalada em terraço aberto, local provisório combinado com o professor responsável |
+| Estação **fixa**, operação contínua por solar | **Atendido** | energizada sem rede elétrica no ponto |
 | Parâmetros alinhados ao Y-Pod + T/UR + vento | **Atendido** | o instrumento **é** um Y-Pod; vento acrescentado |
 | Infraestrutura de rede e servidor do colégio | **Atendido** | roda em PC cedido pelo colégio, na rede da escola |
 | **Painel digital** — prioridade declarada | **Atendido e superado** | painel público na internet, com IQAr, aberto a qualquer pessoa |

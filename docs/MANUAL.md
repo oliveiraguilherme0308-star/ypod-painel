@@ -15,7 +15,7 @@ Este manual tem duas partes, porque são dois leitores diferentes:
 
 ## O que a estação faz
 
-Mede o ar de fora, no alto da caixa d'água, e publica os valores num site aberto:
+Mede o ar de fora e publica os valores num site aberto:
 
 **<https://ypod.ypod-sm.workers.dev>**
 
@@ -93,11 +93,20 @@ qualquer jeito não atrapalha.
 
 | Peça | O que é | Onde fica |
 |---|---|---|
-| **Pod YPODV6** | O instrumento. Arduino UNO R4 Minima com nove sensores. | Dentro do gabinete, no alto |
-| **Ponte** | ESP32-S3 que lê o pod pela USB e manda por Wi-Fi | Mesmo gabinete |
-| **Alimentação** | Painel solar → bateria → regulador LM2596 em 5,0 V | Mesmo gabinete |
+| **Pod YPODV6** | O instrumento. Arduino UNO R4 Minima com nove sensores. | No terraço |
+| **Ponte** | ESP32-S3 que lê o pod pela USB e manda por Wi-Fi | Caixa junto ao pod |
+| **Alimentação** | Painel solar → baterias → regulador LM2596 em 5,0 V | Baterias em caixa IP65 |
 | **Servidor** | Um PC comum na escola, rodando `ypod_monitor.py` | Dentro da escola |
 | **Nuvem** | Worker + banco na Cloudflare, alimenta o site público | — |
+
+> **Local atual:** a estação está num **terraço aberto**, posição provisória
+> acordada com o professor responsável. O ponto definitivo é sobre a caixa
+> d'água, a cerca de 15 m.
+
+> ⚠️ **Proteção incompleta.** As baterias estão em caixa IP65. A caixa do ESP32
+> com o regulador, e o próprio pod, **ainda não têm proteção contra chuva**. Não
+> deixe a estação exposta a chuva forte sem acompanhamento até que isso seja
+> resolvido.
 
 ## Instalar do zero
 
