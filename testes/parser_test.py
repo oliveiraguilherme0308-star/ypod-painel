@@ -101,4 +101,48 @@ assert _re.search(r"\[hidden\]\s*\{[^}]*display\s*:\s*none", _html), (
 print("[ok] painel: %d usos de hidden, com a regra CSS que os faz valer"
       % len(_usa_hidden))
 
+
+# --- 8. valor calculado pelo pod nao sobrevive a entrada invalida ----------
+# Desde 30/10 o pod roda CALIBRATE 1: tvoc, co e co2 chegam prontos da equacao
+# de calibracao dele. Se uma entrada da equacao era lixo, a saida e lixo com
+# cara de numero bom -- e nenhuma faixa fisica pega isso.
+#
+# Linha real do pod calibrado (30/10, ar limpo de sala):
+CAL = ("2026-07-31T17:49:53,,,YPODV6,YPOD_V4.2.1,,,23.95,59.11,0,1538,166,"
+       "65535,0.00,2851,2942,317,1,2,2,")
+_, v, _ = y.parse_line(CAL)
+assert v["tvoc"] == 0.0 and v["co"] == 0.0, (v["tvoc"], v["co"])
+assert v["co2"] == 317.0, v["co2"]
+print("[ok] linha calibrada: tvoc 0, co 0 ppm, co2 317 ppm (ar limpo)")
+
+# Mesma linha com o ADS1115 nao inicializado: os dois Figaro leem 64537.
+# SATURADO derruba os campos 10 e 11; o tvoc do campo 9 veio de
+# 0.05183 * 64537 = 3345 e PASSARIA, porque 3345 nao e absurdo para COV.
+ADS_MORTO = CAL.replace(",0,1538,166,", ",3345,64537,64537,")
+_, v, _ = y.parse_line(ADS_MORTO)
+assert v["fig2600"] is None and v["fig2602"] is None, "64537 deveria cair"
+assert v["tvoc"] is None, \
+    "tvoc %r passou, mas foi calculado de fig2600/fig2602 invalidos" % v["tvoc"]
+assert v["temp"] == 23.95 and v["pm25"] == 2.0, "o resto da linha continua bom"
+print("[ok] ADS1115 morto: tvoc descartado junto com os Figaro que o geraram")
+
+# Sem o SHT25 a equacao do CO tambem perde o pe: ela usa rh.
+SEM_RH = CAL.replace(",23.95,59.11,", ",23.95,118.99,")
+_, v, _ = y.parse_line(SEM_RH)
+assert v["rh"] is None, "118,99% deveria cair"
+assert v["co"] is None, "co %r passou sem o rh que a equacao usa" % v["co"]
+assert v["co2"] is None, "co2 %r passou sem o rh que a equacao usa" % v["co2"]
+assert v["pm25"] == 2.0, "o que nao depende de rh continua valendo"
+print("[ok] rh invalido: co e co2 descartados; pm25 da mesma linha mantido")
+
+# E o contrario: linha SEM calibracao (campos 9 e 13 vazios) nao passa por
+# essa regra -- ali o co2 e leitura crua e nao depende de rh nem de temp.
+# E o caso de todo o historico anterior a 30/10.
+SEM_CAL = BOA.replace(",28.84,61.27,", ",28.84,118.99,")
+_, v, _ = y.parse_line(SEM_CAL)
+assert v["rh"] is None, "118,99% deveria cair"
+assert v["co2"] == 1390.0, \
+    "co2 cru %r foi descartado por causa do rh, mas nao depende dele" % v["co2"]
+print("[ok] linha sem CALIBRATE: co2 cru preservado apesar do rh invalido")
+
 print("\nTUDO PASSOU")

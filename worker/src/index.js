@@ -12,7 +12,21 @@
 
 // Mesma ordem e nomes de KEYS em ypod_monitor.py e das colunas em schema.sql.
 // Sao constantes: e seguro montar SQL com elas.
-const KEYS = ["temp", "rh", "fig2600", "fig2602", "mox3", "co", "aux", "co2",
+// MESMA lista, MESMA ordem de KEYS em ypod_monitor.py e das colunas de
+// schema.sql. O PC monta o JSON do push por NOME (d[k] = valor) e aqui a leitura
+// e por nome (json_extract '$.<chave>'), entao uma chave que falte nesta lista
+// nao da erro nenhum: o valor chega e e descartado em silencio.
+//
+// Foi o que aconteceu entre 25/10 e 30/10. Esta lista ficou com os nomes de
+// antes da correcao do mapa de campos ("mox3" virou "o3", "aux" virou "co_ae")
+// e sem as duas chaves novas, entao tvoc, o3, co_we e co_ae nunca entraram no
+// historico da nuvem -- enquanto o /api/live, que e retrato repassado do PC,
+// mostrava os valores certos na tela. Daí ninguem ver.
+//
+// O contrato_test.py agora compara os TRES lugares (ponte.h, ypod_monitor.py e
+// este arquivo), porque comparar dois foi o que deixou isso passar.
+const KEYS = ["temp", "rh", "tvoc", "fig2600", "fig2602", "o3",
+              "co", "co_we", "co_ae", "co2",
               "pm1", "pm25", "pm10", "vento_vel", "vento_dir"];
 
 // Grandezas CIRCULARES: a escala da a volta, entao media aritmetica mente. A
@@ -73,6 +87,7 @@ export default {
         case "/api/range":  return json(faixa(await estado(env)));
         case "/api/table":  return json(await tabela(env, q));
         case "/api/export": return await exportar(env, q, req);
+        case "/api/saude":  return await saude(env);
         case "/":           return texto("YPOD API no ar. O painel fica em https://ypod.ypod-sm.workers.dev");
       }
       return texto("not found", 404);
@@ -192,6 +207,80 @@ function metaDoPc(e) {
   } catch (err) {
     return {};
   }
+}
+
+// ---------------------------------------------------------------------------
+// /api/saude -- para um monitor externo (UptimeRobot e afins).
+//
+// Existe porque "o site respondeu 200" NAO quer dizer que o sistema esta de pe.
+// Sao duas quedas diferentes:
+//
+//   Worker/Cloudflare cai  -> o site nao responde       -> qualquer monitor pega
+//   PC da escola para      -> o site responde 200 com   -> monitor NAO pega
+//                             dado velho
+//
+// A segunda e a que acontece de verdade (ja ficou 37 h fora). Entao este
+// endpoint devolve 503 quando algo esta quebrado, para o monitor tratar como
+// queda. Le UMA linha do D1 (a tabela estado), o que e irrelevante na cota.
+//
+// Os limiares aqui sao MUITO maiores que PC_OFFLINE_S de proposito: o selo da
+// tela deve reagir na hora, mas alerta que dispara a cada piscada de Wi-Fi e
+// alerta que se aprende a ignorar.
+const SAUDE_PC_S = 900;    // 15 min sem o PC enviar nada
+const SAUDE_POD_S = 1800;  // 30 min com o PC no ar, mas sem leitura do pod
+
+function minutos(s) {
+  return Math.round(s / 60);
+}
+
+async function saude(env) {
+  const e = await estado(env);
+  const agora = Date.now();
+  const falhas = [];
+  const linhas = [];
+
+  if (!e || !e.live_at) {
+    falhas.push("o PC da escola nunca enviou nada");
+  } else {
+    const pc = (agora - e.live_at) / 1000;
+    const quando = new Date(e.live_at)
+      .toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    linhas.push("ultimo envio do PC : " + quando + "  (ha " + minutos(pc) + " min)");
+
+    if (pc > SAUDE_PC_S) {
+      falhas.push("PC da escola sem enviar ha " + minutos(pc) + " min (limite " +
+                  minutos(SAUDE_PC_S) + " min); ultimo envio " + quando);
+    } else {
+      // O PC esta enviando. Mas ele envia mesmo sem receber do pod, entao vale
+      // olhar a idade da ULTIMA LEITURA dentro do retrato: ponte caida ou pod
+      // desconectado aparecem aqui, e nao no envio.
+      const s = metaDoPc(e);
+      const idade = (s && s.age !== null && s.age !== undefined)
+        ? s.age + pc : null;
+      if (idade === null) {
+        falhas.push("o PC esta enviando, mas o retrato nao traz leitura nenhuma " +
+                    "do pod (ponte ou pod fora)");
+      } else {
+        linhas.push("ultima leitura do pod : ha " + minutos(idade) + " min");
+        if (idade > SAUDE_POD_S) {
+          falhas.push("PC no ar, mas sem leitura do pod ha " + minutos(idade) +
+                      " min (limite " + minutos(SAUDE_POD_S) + " min): olhar " +
+                      "http://ypod-bridge.local e o LED da ponte");
+        }
+      }
+    }
+    linhas.push("linhas no banco : " + (e.rows || 0));
+  }
+
+  if (falhas.length === 0) {
+    return texto("ok\n\n" + linhas.join("\n") + "\n", 200);
+  }
+  return texto("PROBLEMA\n\n" + falhas.map((f) => "- " + f).join("\n") +
+               "\n\n" + linhas.join("\n") +
+               "\n\nOrdem de diagnostico (secao \"Se a coleta parar\" do README):\n" +
+               "1. data/servidor.log no PC da escola\n" +
+               "2. http://ypod-bridge.local e o LED da ponte\n" +
+               "3. religar a USB do pod na ponte\n", 503);
 }
 
 async function live(env) {

@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS leituras (
   ts        REAL NOT NULL,          -- epoch em segundos (meio do minuto)
   pod_id    TEXT,
   firmware  TEXT,
-  temp REAL, rh REAL, fig2600 REAL, fig2602 REAL, mox3 REAL, co REAL, aux REAL,
-  co2 REAL, pm1 REAL, pm25 REAL, pm10 REAL, vento_vel REAL, vento_dir REAL
+  -- Mesma ordem de KEYS em ypod_monitor.py. O contrato_test.py compara os dois.
+  temp REAL, rh REAL, tvoc REAL, fig2600 REAL, fig2602 REAL, o3 REAL,
+  co REAL, co_we REAL, co_ae REAL, co2 REAL,
+  pm1 REAL, pm25 REAL, pm10 REAL, vento_vel REAL, vento_dir REAL
 );
 CREATE INDEX IF NOT EXISTS idx_leituras_ts ON leituras(ts);
 
@@ -26,11 +28,13 @@ CREATE TABLE IF NOT EXISTS hora (
   n INTEGER,
   temp_s REAL, temp_n INTEGER, temp_lo REAL, temp_hi REAL,
   rh_s REAL, rh_n INTEGER, rh_lo REAL, rh_hi REAL,
+  tvoc_s REAL, tvoc_n INTEGER, tvoc_lo REAL, tvoc_hi REAL,
   fig2600_s REAL, fig2600_n INTEGER, fig2600_lo REAL, fig2600_hi REAL,
   fig2602_s REAL, fig2602_n INTEGER, fig2602_lo REAL, fig2602_hi REAL,
-  mox3_s REAL, mox3_n INTEGER, mox3_lo REAL, mox3_hi REAL,
+  o3_s REAL, o3_n INTEGER, o3_lo REAL, o3_hi REAL,
   co_s REAL, co_n INTEGER, co_lo REAL, co_hi REAL,
-  aux_s REAL, aux_n INTEGER, aux_lo REAL, aux_hi REAL,
+  co_we_s REAL, co_we_n INTEGER, co_we_lo REAL, co_we_hi REAL,
+  co_ae_s REAL, co_ae_n INTEGER, co_ae_lo REAL, co_ae_hi REAL,
   co2_s REAL, co2_n INTEGER, co2_lo REAL, co2_hi REAL,
   pm1_s REAL, pm1_n INTEGER, pm1_lo REAL, pm1_hi REAL,
   pm25_s REAL, pm25_n INTEGER, pm25_lo REAL, pm25_hi REAL,

@@ -221,4 +221,76 @@ assert meta["pod_id"] == "YPODV6"
 print("[ok] linha compactada (%d campos) aceita pelo parser, valores no lugar certo"
       % len(campos))
 
+
+# ---------------------------------------------------------------------------
+# Terceiro lugar do contrato: o Worker da Cloudflare.
+#
+# Ate 30/10 este teste comparava SO ponte.h com ypod_monitor.py, e por isso nao
+# viu que o worker/ tinha ficado com o mapa de campos de antes de 25/10. O push
+# e lido por NOME (json_extract '$.<chave>'), entao chave faltando nao da erro:
+# o PC manda, o Worker descarta calado. Quatro campos (tvoc, o3, co_we, co_ae)
+# ficaram cinco dias fora do historico publico enquanto a tela mostrava certo,
+# porque o /api/live e retrato repassado do PC e nao passa por essas colunas.
+#
+# Sao TRES arquivos que precisam concordar. Agora os tres sao comparados.
+# ---------------------------------------------------------------------------
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WORKER_JS = os.path.join(RAIZ, "worker", "src", "index.js")
+SCHEMA_SQL = os.path.join(RAIZ, "worker", "schema.sql")
+
+js = open(WORKER_JS, encoding="utf-8").read()
+m = re.search(r"const\s+KEYS\s*=\s*\[(.*?)\]\s*;", js, re.S)
+assert m, "const KEYS nao encontrado em worker/src/index.js"
+keys_worker = re.findall(r'"([A-Za-z0-9_]+)"', m.group(1))
+assert keys_worker == y.KEYS, (
+    "KEYS do Worker difere do servidor.\n"
+    "  worker/src/index.js : %s\n"
+    "  ypod_monitor.py     : %s\n"
+    "  so no Worker        : %s\n"
+    "  so no servidor      : %s"
+    % (keys_worker, y.KEYS,
+       sorted(set(keys_worker) - set(y.KEYS)),
+       sorted(set(y.KEYS) - set(keys_worker))))
+print("[ok] KEYS do Worker igual ao do servidor (%d campos, mesma ordem)"
+      % len(keys_worker))
+
+sql = open(SCHEMA_SQL, encoding="utf-8").read()
+
+
+def bloco(tabela):
+    m = re.search(r"CREATE TABLE IF NOT EXISTS %s\s*\((.*?)\n\);" % tabela, sql, re.S)
+    assert m, "CREATE TABLE %s nao encontrado em schema.sql" % tabela
+    # tira os comentarios -- "-- ..." pode citar nome de coluna no texto
+    return "\n".join(l.split("--")[0] for l in m.group(1).splitlines())
+
+
+# leituras: uma coluna REAL por campo, fora o ts
+cols = [c for c in re.findall(r"(\w+)\s+REAL", bloco("leituras")) if c != "ts"]
+assert cols == y.KEYS, (
+    "colunas de leituras em schema.sql diferem de KEYS.\n"
+    "  schema.sql      : %s\n"
+    "  ypod_monitor.py : %s\n"
+    "  so no schema    : %s\n"
+    "  so no servidor  : %s"
+    % (cols, y.KEYS,
+       sorted(set(cols) - set(y.KEYS)), sorted(set(y.KEYS) - set(cols))))
+print("[ok] colunas da tabela leituras iguais a KEYS (%d)" % len(cols))
+
+# hora: quatro colunas por campo (_s/_n/_lo/_hi); a chave sai do _s
+hora_src = bloco("hora")
+hora_keys = re.findall(r"(\w+)_s\s+REAL", hora_src)
+assert hora_keys == y.KEYS, (
+    "colunas da tabela hora em schema.sql diferem de KEYS.\n"
+    "  schema.sql      : %s\n"
+    "  ypod_monitor.py : %s\n"
+    "  so no schema    : %s\n"
+    "  so no servidor  : %s"
+    % (hora_keys, y.KEYS,
+       sorted(set(hora_keys) - set(y.KEYS)), sorted(set(y.KEYS) - set(hora_keys))))
+for k in y.KEYS:
+    for suf in ("_s", "_n", "_lo", "_hi"):
+        assert re.search(r"\b%s%s\s+(REAL|INTEGER)" % (k, suf), hora_src), \
+            "falta a coluna %s%s na tabela hora" % (k, suf)
+print("[ok] tabela hora tem _s/_n/_lo/_hi para os %d campos" % len(hora_keys))
+
 print("\nTUDO PASSOU")

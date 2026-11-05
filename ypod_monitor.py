@@ -172,6 +172,32 @@ FAIXAS = {
 KEYS = [f[1] for f in FIELDS]
 CSV_HEADER = ["pc_time", "pod_time", "pod_id", "firmware"] + KEYS + ["raw"]
 
+# Campos que o pod nao MEDE, ele CALCULA -- e de quais medidas a conta depende.
+#
+# Desde 30/10 o pod roda com CALIBRATE 1, entao tvoc, co e co2 chegam ja
+# passados pela equacao de calibracao do YPODV6 (calibration.cpp do firmware
+# dele; as equacoes estao na secao "Calibracao embarcada do pod" do README).
+# Isso cria um furo que nenhuma faixa fecha: se uma ENTRADA da equacao estava
+# invalida, a SAIDA sai contaminada com um numero perfeitamente plausivel.
+#
+# O caso concreto: quando o ADS1115 nao inicializa, fig2600 e fig2602 leem
+# 64537. SATURADO descarta os campos 10 e 11, mas o tvoc do campo 9 ja veio de
+#     0.05183 * 64537 = 3345
+# e passa inteiro, porque 3345 nao e absurdo para um indice de COV.
+#
+# Entao: valor derivado so vale se todas as suas entradas valerem.
+DERIVADOS = {
+    "tvoc": ("fig2600", "fig2602", "temp", "rh"),
+    "co":   ("co_we", "rh"),
+    "co2":  ("temp", "rh"),
+}
+
+# Em que posicoes da linha o pod avisa que a calibracao esta ligada. Com
+# CALIBRATE 0 estes dois campos vem VAZIOS, o co2 e leitura crua -- que nao
+# depende de temp nem de rh -- e aplicar DERIVADOS ali seria descartar dado bom.
+# Vale para o historico de antes de 30/10 e para qualquer pod sem calibracao.
+CALIBRADOS_IDX = tuple(f[0] for f in FIELDS if f[1] in ("tvoc", "co"))
+
 # Grandezas CIRCULARES: a escala da a volta, entao media aritmetica mente.
 # A media de 350 e 10 graus e 180 -- a direcao oposta. E o erro nao e aleatorio:
 # ele aparece exatamente quando o vento vem do NORTE, que e onde a escala
@@ -713,6 +739,18 @@ def parse_line(line):
         values[key] = v
         if v is not None:
             got += 1
+
+    # 4. Valor calculado pelo pod nao vale mais que a pior das suas entradas.
+    #    Ver DERIVADOS: a faixa fisica nao pega isso, porque o numero que sai de
+    #    uma equacao alimentada com lixo continua parecendo um numero bom.
+    if any(i < len(parts) and parts[i].strip() for i in CALIBRADOS_IDX):
+        for key, entradas in DERIVADOS.items():
+            if values.get(key) is None:
+                continue
+            if any(values.get(e) is None for e in entradas):
+                values[key] = None
+                got -= 1
+
     if got == 0:
         return None
     meta = {name: (parts[i].strip() if i < len(parts) else "")

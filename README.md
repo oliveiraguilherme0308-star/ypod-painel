@@ -1,5 +1,25 @@
 # YPOD Monitor
 
+Estação fixa de monitoramento da qualidade do ar externo do **Colégio Santa
+Maria**, em Curitiba. Mede material particulado, gases, temperatura, umidade e
+vento; publica em tempo real num painel aberto e guarda o histórico.
+
+Projeto da disciplina **Internet Industrial das Coisas**, Engenharia
+Mecatrônica, PUCPR — Grupo 5: Bruno H. I. de Deus, Elias H. Clementino,
+Fernando A. de Azevedo, Guilherme O. Braz, Peterson G. Pereira e Thiago de
+Vargas. Professor: Ricardo Alexandre Diogo.
+
+Painel público: <https://ypod.ypod-sm.workers.dev>
+
+| documento | para quem |
+|---|---|
+| [`docs/MANUAL.md`](docs/MANUAL.md) | manual do usuário: ler o painel, instalar, operar |
+| [`docs/TESTES.md`](docs/TESTES.md) | procedimento de testes de hardware e software |
+| [`docs/IMPLEMENTACAO.md`](docs/IMPLEMENTACAO.md) | fluxo de implementação em campo, requisitos atendidos e restrições |
+| este arquivo | referência técnica: como cada parte roda |
+
+---
+
 Mini servidor que recebe os dados do YPOD, guarda tudo num banco e mostra num
 painel web — valores atuais, janela histórica e qualquer intervalo de data/hora.
 
@@ -484,6 +504,61 @@ escritas está no arquivo `-wal` e ainda não foi para o `.db`. Uma cópia simpl
 pega um banco sem elas — ou pior, pega o `.db` no meio de uma gravação. O
 script usa `VACUUM INTO`, que é a forma do próprio SQLite de copiar um banco em
 uso, e de quebra já sai compactado.
+
+### Calibração embarcada do pod
+
+O pod roda o `YPOD_V4.2.1` do repositório do fabricante
+(github.com/HanniganAirQuality/YPOD) com **duas linhas trocadas** no
+`YPOD_node.h`, e só elas:
+
+```c
+#define CALIBRATE    1          // era 0
+const char ypodID[] = "YPODV6"; // era "YPODC5", o padrão do repositório
+```
+
+**O `ypodID` é o que escolhe a calibração.** O `calibration.cpp` guarda os
+coeficientes de *todos* os pods num `switch` por letra e número do ID
+(`ypodID[4]`, `ypodID[5]`); o nosso é o `V`/`6`. Gravar o fonte do fabricante
+sem trocar essa linha faz o pod se identificar como `YPODC5` e usar a
+calibração do pod errado. Os `default:` do arquivo não avisam: devolvem
+`co_cal = co` (o valor cru, sem conversão) e `voc_cal = 1` (literal).
+
+Com `CALIBRATE 1` o pod não só preenche COV e CO — ele **reescreve**
+temperatura, umidade e CO₂ com o resultado da equação. Para o YPODV6:
+
+```
+t_cal   = 0.98436·t  + 2.32866
+rh_cal  = 0.86409·rh + 1.26824
+co2_cal = 0.94356·co2 + 0.53461·rh + 1.72155·t - 90.12135
+co_cal  = 0.00109·co_we - 0.07102·rh + 1.42407
+voc_cal = 0.05183·fig2600 + 0.32653·fig2602 - 9.03121·t - 2.86512·rh + 31.39674
+```
+
+`co_cal` e `voc_cal` são inteiros e o firmware trava negativo em zero. Em ar
+limpo as duas equações dão negativo, então **`0` é o valor esperado** nos dois:
+significa "abaixo da detecção", não falha.
+
+#### Gravar o pod (UNO R4 Minima, DFU)
+
+O `arduino-cli` não executa o `post_install` do core quando instala em modo não
+interativo, e sem ele a interface DFU do UNO R4 fica sem driver no Windows. O
+`dfu-util` falha com `LIBUSB_ERROR_NOT_FOUND` *encontrando* o `2341:0069`, e no
+Gerenciador de Dispositivos o `VID_2341&PID_0069&MI_02` ("DFU-RT Port") aparece
+com erro. Não é a placa nem o cabo, e duplo reset no botão não resolve, porque o
+bootloader depende do mesmo driver. Uma vez, como administrador:
+
+```
+%LOCALAPPDATA%\Arduino15\packages\arduino\hardware\renesas_uno\1.6.0\post_install.bat
+```
+
+O pod expõe CDC **e** DFU ao mesmo tempo, então gravar não exige tocar na placa:
+
+```
+arduino-cli upload --fqbn arduino:renesas_uno:minima --port COM5 <pasta-do-sketch>
+```
+
+Precisa da biblioteca `MCP342x@1.0.4`: o `quad_module.cpp` está na pasta do
+sketch e o Arduino compila todo `.cpp`, mesmo com `QUAD_ENABLED 0`.
 
 ### O que o servidor descarta, e por quê
 
