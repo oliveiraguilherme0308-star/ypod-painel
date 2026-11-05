@@ -145,4 +145,33 @@ assert v["co2"] == 1390.0, \
     "co2 cru %r foi descartado por causa do rh, mas nao depende dele" % v["co2"]
 print("[ok] linha sem CALIBRATE: co2 cru preservado apesar do rh invalido")
 
+
+# --- 9. contagem de A/D nao aparece no painel, mas continua gravada ---------
+# O painel e lido pela comunidade escolar. Contagem bruta do conversor nao e
+# grandeza nenhuma -- so quer dizer algo depois da calibracao, e o resultado
+# dessa conta ja esta na tela com unidade de verdade. Mas o numero cru e o que
+# permite recalibrar e ver um sensor morrendo, entao ele nao sai do banco.
+_visiveis = {c["key"] for c in y.card_meta()}
+for _k in y.OCULTOS_NO_PAINEL:
+    assert _k in y.KEYS, "%s sumiu de KEYS: quebraria o contrato com o firmware" % _k
+    assert _k not in _visiveis, "%s voltou a aparecer no painel" % _k
+assert "co" in _visiveis and "tvoc" in _visiveis, \
+    "o valor calibrado precisa continuar visivel, senao o painel perde o sensor"
+print("[ok] %d campos de A/D fora do painel, todos ainda em KEYS"
+      % len(y.OCULTOS_NO_PAINEL))
+
+# Grupo que ficou sem nenhum campo visivel nao pode ser enviado: viraria um
+# grafico com titulo e nada dentro.
+_grupos = {g["key"] for g in y.group_meta()}
+_usados = {c["group"] for c in y.card_meta()}
+assert _grupos == _usados, (
+    "grupos enviados %s diferem dos que tem campo visivel %s" % (_grupos, _usados))
+assert "gases" not in _grupos, "o grupo dos ADC ficou vazio e ainda e enviado"
+print("[ok] %d grupos enviados, todos com campo visivel" % len(_grupos))
+
+# O CSV nao passa pelo painel: continua com tudo.
+assert all(_k in y.CSV_HEADER for _k in y.OCULTOS_NO_PAINEL), \
+    "o CSV perdeu os campos brutos"
+print("[ok] CSV continua exportando os campos brutos")
+
 print("\nTUDO PASSOU")

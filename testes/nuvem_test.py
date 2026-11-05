@@ -101,8 +101,26 @@ assert r["k"].startswith("min:") and r["pod_id"] == "YPODV6", r
 assert "mox3" not in r, "sensor sem leitura nao vai na linha"
 assert "ypod-monitor" in POSTS[0][1], "User-Agent padrao do urllib e barrado pela Cloudflare"
 assert LIVE.get("fields") and LIVE.get("groups") and "cards" in LIVE, list(LIVE)
-assert {f["key"] for f in LIVE["fields"]} == set(y.KEYS)
+
+# O retrato carrega o que o PAINEL desenha, que nao e tudo o que se GRAVA: as
+# contagens brutas do conversor A/D ficam fora da tela e dentro do banco. O
+# Worker reaproveita este "fields", entao o painel publico segue o local sem
+# precisar de deploy -- e por isso o contrato dos dois e verificado aqui.
+assert {f["key"] for f in LIVE["fields"]} == set(y.KEYS) - set(y.OCULTOS_NO_PAINEL)
+assert {g["key"] for g in LIVE["groups"]} == {f["group"] for f in LIVE["fields"]}, \
+    "grupo sem campo visivel viraria um grafico vazio no site"
+# ...e as LINHAS continuam levando tudo: e delas que sai o CSV e a recalibracao.
+# Nao da para conferir isso em `r`: as linhas deste teste so preenchem quatro
+# sensores, e a linha do envio omite sensor sem leitura (assert acima). Entao a
+# verificacao e no montador, com uma linha de banco onde todo campo tem valor.
+_falsa = (1, 1000.0, "min:1", "YPODV6", "V4") + tuple(range(len(y.KEYS)))
+_envio = y.NuvemWriter._linha(_falsa)
+assert all(k in _envio for k in y.OCULTOS_NO_PAINEL), \
+    "o envio monta por card_meta em vez de KEYS: perdeu os campos brutos"
+assert set(y.KEYS) <= set(_envio), "o envio nao leva todos os campos gravados"
 print("[ok] linha com k/ts/pod_id e so sensores com valor; retrato traz cards, fields, groups")
+print("[ok] retrato esconde os %d campos de A/D que a linha continua levando"
+      % len(y.OCULTOS_NO_PAINEL))
 
 # --- 3. sem nada novo, ainda manda o retrato (o "ao vivo" do site) -------
 antes = len(POSTS)

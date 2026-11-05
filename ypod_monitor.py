@@ -1150,9 +1150,34 @@ def parse_broker(uri):
 # ---------------------------------------------------------------------------
 # HTTP
 # ---------------------------------------------------------------------------
+# Campos que o painel NAO mostra -- e que continuam sendo gravados.
+#
+# Sao as contagens brutas do conversor A/D. Elas nao sao grandeza nenhuma: o
+# numero so quer dizer alguma coisa depois da equacao de calibracao, e o
+# resultado dessa equacao ja aparece na tela com unidade de verdade (CO em ppm,
+# COV como indice). Mostrar os dois lados confunde quem le o painel, que e a
+# comunidade escolar, nao quem calibra o sensor.
+#
+# Ficam no banco, no CSV e no envio para a nuvem de proposito: sao eles que
+# permitem recalibrar depois e diagnosticar um sensor morrendo. Tirar de FIELDS
+# quebraria o contrato com CAMPOS_MEDIA do firmware e com KEYS do Worker.
+OCULTOS_NO_PAINEL = ("fig2600", "fig2602", "o3", "co_we", "co_ae")
+
+
 def card_meta():
     return [{"key": k, "label": lb, "unit": u, "group": g, "slot": s}
-            for _, k, lb, u, g, s in FIELDS]
+            for _, k, lb, u, g, s in FIELDS if k not in OCULTOS_NO_PAINEL]
+
+
+def group_meta():
+    """Grupos que ainda tem algum campo visivel.
+
+    Sem isto, esconder todos os campos de um grupo deixa no painel um grafico
+    com titulo e nenhuma linha dentro.
+    """
+    vivos = {c["group"] for c in card_meta()}
+    return [{"key": g, "title": t, "unit": u}
+            for g, t, u in GROUPS if g in vivos]
 
 
 def live_state():
@@ -1200,7 +1225,7 @@ def window_state(t0, t1):
     series, bucket = DB.series(t0, t1)
     return {"from": t0 * 1000, "to": t1 * 1000, "bucket": bucket,
             "stats": DB.stats(t0, t1), "series": series,
-            "groups": [{"key": g, "title": t, "unit": u} for g, t, u in GROUPS],
+            "groups": group_meta(),
             "fields": card_meta(), "range": DB.range()}
 
 
@@ -1487,8 +1512,7 @@ class NuvemWriter(threading.Thread):
                 linhas = self._pendentes(ultimo)
                 retrato = live_state()
                 retrato["fields"] = card_meta()
-                retrato["groups"] = [{"key": g, "title": t, "unit": u}
-                                     for g, t, u in GROUPS]
+                retrato["groups"] = group_meta()
                 self._enviar({"rows": [self._linha(r) for r in linhas],
                               "live": retrato})
                 if linhas:
